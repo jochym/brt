@@ -24,11 +24,11 @@ class Telescope :
                    'stayloggedin': 'true'}
             
         self.s=session()
-        self.s.post(url+'login.php', data=payload)
+        self.s.post(self.url+'login.php', data=payload)
 
     def logout(self):
         if self.s==None :
-            self.s.post(url+'logout.php')
+            self.s.post(self.url+'logout.php')
             self.s=None
 
     def get_obs_list(self, t=None, dt=1):
@@ -76,7 +76,7 @@ class Telescope :
         headers = {'Content-Type': 'application/x-www-form-urlencoded'}
 
 
-        request = self.s.post(url+'v3job-search-query.php',
+        request = self.s.post(self.url+'v3job-search-query.php',
                          data=searchdat, headers=headers)
         soup = BeautifulSoup(request.text)
 
