@@ -13,6 +13,7 @@ from os import path
 
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
+from urllib2 import urlopen
 
 global DEBUG
 
@@ -377,7 +378,7 @@ astrometry_cmd='solve-field -2 -p -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
 telescopes={'Galaxy':   (1,2),
             'Cluster':  (14,16)}
 
-def solveField(hdu):
+def _solveField_local(hdu):
     o=getFrameRaDec(hdu)
     ra=o.ra.deg
     dec=o.dec.deg
@@ -399,3 +400,15 @@ def solveField(hdu):
         shutil.rmtree(td)
 
 
+
+def solveField(hdu, local=True, apikey=None, apiurl='http://nova.astrometry.net/api/'):
+    '''
+    Solve plate using local or remote (nova.astrometry.net) plate solver.
+    '''
+    if local :
+        return _solveField_local(hdu)
+    else :
+        if apikey is None :
+            print('You need an API key from astrometry.net to use network solver.')
+            return None
+        return _solveField_remote(hdu, apikey=apikey, apiurl=apiurl)
