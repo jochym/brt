@@ -22,6 +22,12 @@ class MalformedResponse(Exception):
 class RequestError(Exception):
     pass
 
+__debug=False
+
+def dprint(*args):
+    if __debug :
+        print(*args)
+
 class Client(object):
     default_url = 'http://nova.astrometry.net/api/'
     
@@ -40,11 +46,11 @@ class Client(object):
         '''
         if self.session is not None:
             args.update({ 'session' : self.session })
-        print 'Python:', args
+        dprint( 'Python:', args)
         json = python2json(args)
-        print 'Sending json:', json
+        dprint( 'Sending json:', json)
         url = self.get_url(service)
-        print 'Sending to URL:', url
+        dprint('Sending to URL:', url)
 
         # If we're sending a file, format a multipart/form-data
         if file_args is not None:
@@ -97,21 +103,21 @@ class Client(object):
             headers = {'Content-type': mp.get('Content-type')}
 
             if False:
-                print 'Sending headers:'
-                print ' ', headers
-                print 'Sending data:'
-                print data[:1024].replace('\n', '\\n\n').replace('\r', '\\r')
+                dprint('Sending headers:')
+                dprint(' ', headers)
+                dprint('Sending data:')
+                dprint(data[:1024].replace('\n', '\\n\n').replace('\r', '\\r'))
                 if len(data) > 1024:
-                    print '...'
-                    print data[-256:].replace('\n', '\\n\n').replace('\r', '\\r')
+                    dprint('...')
+                    dprint(data[-256:].replace('\n', '\\n\n').replace('\r', '\\r'))
                     print
 
         else:
             # Else send x-www-form-encoded
             data = {'request-json': json}
-            print 'Sending form data:', data
+            dprint('Sending form data:', data)
             data = urlencode(data)
-            print 'Sending data:', data
+            dprint('Sending data:', data)
             headers = {}
 
         request = Request(url=url, headers=headers, data=data)
@@ -119,26 +125,26 @@ class Client(object):
         try:
             f = urlopen(request)
             txt = f.read()
-            print 'Got json:', txt
+            dprint('Got json:', txt)
             result = json2python(txt)
-            print 'Got result:', result
+            dprint('Got result:', result)
             stat = result.get('status')
-            print 'Got status:', stat
+            dprint('Got status:', stat)
             if stat == 'error':
                 errstr = result.get('errormessage', '(none)')
                 raise RequestError('server error message: ' + errstr)
             return result
         except HTTPError, e:
-            print 'HTTPError', e
+            print('HTTPError', e)
             txt = e.read()
             open('err.html', 'wb').write(txt)
-            print 'Wrote error text to err.html'
+            print('Wrote error text to err.html')
 
     def login(self, apikey):
         args = { 'apikey' : apikey }
         result = self.send_request('login', args)
         sess = result.get('session')
-        print 'Got session:', sess
+        dprint('Got session:', sess)
         if not sess:
             raise RequestError('no session in result')
         self.session = sess
@@ -168,7 +174,7 @@ class Client(object):
                 args.update({key: val})
             elif default is not None:
                 args.update({key: default})
-        print 'Upload args:', args
+        dprint('Upload args:', args)
         return args
     
     def url_upload(self, url, **kwargs):
@@ -200,11 +206,11 @@ class Client(object):
                       cd21 = wcs.cd[2], cd22 = wcs.cd[3],
                       imagew = wcs.imagew, imageh = wcs.imageh)
         result = self.send_request(service, {'wcs':params})
-        print 'Result status:', result['status']
+        dprint('Result status:', result['status'])
         plotdata = result['plot']
         plotdata = base64.b64decode(plotdata)
         open(outfn, 'wb').write(plotdata)
-        print 'Wrote', outfn
+        dprint('Wrote', outfn)
 
     def sdss_plot(self, outfn, wcsfn, wcsext=0):
         return self.overlay_plot('sdss_image_for_wcs', outfn,
@@ -225,17 +231,17 @@ class Client(object):
         stat = result.get('status')
         if stat == 'success':
             result = self.send_request('jobs/%s/calibration' % job_id)
-            print 'Calibration:', result
+            dprint('Calibration:', result)
             result = self.send_request('jobs/%s/tags' % job_id)
-            print 'Tags:', result
+            dprint('Tags:', result)
             result = self.send_request('jobs/%s/machine_tags' % job_id)
-            print 'Machine Tags:', result
+            dprint('Machine Tags:', result)
             result = self.send_request('jobs/%s/objects_in_field' % job_id)
-            print 'Objects in field:', result
+            dprint('Objects in field:', result)
             result = self.send_request('jobs/%s/annotations' % job_id)
-            print 'Annotations:', result
+            dprint('Annotations:', result)
             result = self.send_request('jobs/%s/info' % job_id)
-            print 'Calibration:', result
+            dprint('Calibration:', result)
 
         return stat
 
@@ -378,14 +384,14 @@ if __name__ == '__main__':
 
             while True:
                 stat = c.sub_status(opt.sub_id, justdict=True)
-                print 'Got status:', stat
+                dprint('Got status:', stat)
                 jobs = stat.get('jobs', [])
                 if len(jobs):
                     for j in jobs:
                         if j is not None:
                             break
                     if j is not None:
-                        print 'Selecting job id', j
+                        dprint('Selecting job id', j)
                         opt.job_id = j
                         break
                 time.sleep(5)
@@ -393,7 +399,7 @@ if __name__ == '__main__':
         success = False
         while True:
             stat = c.job_status(opt.job_id, justdict=True)
-            print 'Got job status:', stat
+            dprint('Got job status:', stat)
             if stat.get('status','') in ['success']:
                 success = (stat['status'] == 'success')
                 break
@@ -402,15 +408,15 @@ if __name__ == '__main__':
         if success:
             c.job_status(opt.job_id)
             # result = c.send_request('jobs/%s/calibration' % opt.job_id)
-            # print 'Calibration:', result
+            # dprint('Calibration:', result)
             # result = c.send_request('jobs/%s/tags' % opt.job_id)
-            # print 'Tags:', result
+            # dprint('Tags:', result)
             # result = c.send_request('jobs/%s/machine_tags' % opt.job_id)
-            # print 'Machine Tags:', result
+            # dprint('Machine Tags:', result)
             # result = c.send_request('jobs/%s/objects_in_field' % opt.job_id)
-            # print 'Objects in field:', result
+            # dprint('Objects in field:', result)
             #result = c.send_request('jobs/%s/annotations' % opt.job_id)
-            #print 'Annotations:', result
+            #dprint('Annotations:', result)
 
             retrieveurls = []
             if opt.wcs:
@@ -422,13 +428,13 @@ if __name__ == '__main__':
                 retrieveurls.append((url, opt.kmz))
 
             for url,fn in retrieveurls:
-                print 'Retrieving file from', url, 'to', fn
+                dprint('Retrieving file from', url, 'to', fn)
                 f = urlopen(url)
                 txt = f.read()
                 w = open(fn, 'wb')
                 w.write(txt)
                 w.close()
-                print 'Wrote to', fn
+                dprint('Wrote to', fn)
 
                 
         opt.job_id = None
@@ -445,7 +451,7 @@ if __name__ == '__main__':
     if opt.job_id:
         print c.job_status(opt.job_id)
         #result = c.send_request('jobs/%s/annotations' % opt.job_id)
-        #print 'Annotations:', result
+        #dprint('Annotations:', result)
 
     if opt.jobs_by_tag:
         tag = opt.jobs_by_tag
@@ -458,4 +464,4 @@ if __name__ == '__main__':
         jobs = c.myjobs()
         print jobs
 
-    #print c.submission_images(1)
+    #dprint(c.submission_images(1))
