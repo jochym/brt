@@ -5,11 +5,14 @@
 from __future__ import print_function, division
 
 from requests import session
-from BeautifulSoup import BeautifulSoup
+from bs4 import BeautifulSoup
 from StringIO import StringIO
 from zipfile import ZipFile
 import time
 from os import path
+
+from astropy.io import fits
+from astropy.coordinates import SkyCoord, Longitude, Latitude
 
 global DEBUG
 
@@ -32,11 +35,16 @@ def error(*args):
     debug_prn('ERROR:',*args,lvl=0)
 
 
-
+# TODO: Cache the downloads to not re-download the same data again if possible.
+# TODO: Better error handling.
 
 class Telescope :
     
     url='http://www.telescope.org/'
+    cameratypes={'Galaxy':'2',
+                'Cluster':'3',
+                'Constellation':'1',
+                'Planet':'5'}
     
     def __init__(self,user,passwd):
         self.s=None
@@ -60,13 +68,16 @@ class Telescope :
             self.s.post(self.url+'logout.php')
             self.s=None
 
-    def get_obs_list(self, t=None, dt=1):
+    def get_obs_list(self, t=None, dt=1, filtertype='', camera=''):
         '''Get the dt days of observations taken no later then t. 
 
             Input
             ------
-            t  - end time in seconds from the epoch (as returned by time.time())
+            t  - end time in seconds from the epoch 
+                (as returned by time.time())
             dt - number of days, default to 1
+            filtertype - filter by type of filter used
+            camera - filter by the camera/telescope used
 
             Output
             ------
@@ -92,6 +103,11 @@ class Telescope :
 
         debug('%d/%d/%d -> %d/%d/%d' % (d,m,y,de,me,ye))
 
+        try :
+            telescope=self.cameratypes[camera]
+        except KeyError:
+            telescope=''
+
         searchdat = {
             'sort1':'completetime',
             'sort1order':'desc',
@@ -99,6 +115,8 @@ class Telescope :
             'searchlatestcom[]':  [de,me,ye,'16','0'],
             'searchstatus[]':['1'],
             'resultsperpage':'200',
+            'searchfilter':filtertype,
+            'searchtelescope':telescope,
             'submit':'Go'
         }
 
@@ -271,6 +289,113 @@ class Telescope :
             
         return None
 
+    def extractTicket(self,rq):
+        soup = BeautifulSoup(rq.text)
+        return int(soup.find('input', attrs={
+                        'name':'ticket',
+                        'type':'hidden'})['value'])
+
+
+    def submitRADECjob(self, obj, exposure=1000, tele='Galaxy', 
+                        filt='BVR', darkframe=True, 
+                        name='RaDec object', comment='AutoSubmit'):
+        assert(self.s != None)
+        ra=obj.ra.to_string(unit='hour', sep=' ',
+                            pad=True, precision=2,
+                            alwayssign=False).split()
+        dec=obj.dec.to_string(sep=' ', 
+                            pad=True, precision=2, 
+                            alwayssign=True).split()
+        try :
+            tele=self.cameratypes[tele]
+        except KeyError :
+            tele=2
+        u=self.url+'/request-constructor.php'
+        r=self.s.get(u+'?action=new')
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t,'action':'main-go-part1'})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t,'action':'part1-go-radec'})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t,'action':'part1-radec-save',
+                             'raHours':ra[0],
+                             'raMins':ra[1],
+                             'raSecs':ra[2].split('.')[0],
+                             'raFract':ra[2].split('.')[1],
+                             'decDegrees':dec[0],
+                             'decMins':dec[1],
+                             'decSecs':dec[2].split('.')[0],
+                             'decFract':dec[2].split('.')[1],
+                             'newObjectName':name})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t, 
+                                'action':'part2-save', 
+                                'submittype':'Save',
+                                'newTelescopeSelection':tele})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t, 
+                                'action':'part3-save', 
+                                'submittype':'Save',
+                                'newExposureTime':exposure,
+                                'newDarkFrame': 1 if darkframe else 0,
+                                'newFilterSelection':filt,
+                                'newRequestComments':comment})
+        t=self.extractTicket(r)
+        r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
+        return r
         
+    def submitVarStar(self, name, expos=60000, filt='BVR',comm=''):
+        o=SkyCoord.from_name(name)
+        self.submitRADECjob(o, name=name, comment=comm, 
+                                exposure=expos, filt=filt)
+
+
+def getFrameRaDec(hdu):
+    try :
+        o=SkyCoord(Longitude(hdu.header['OBJCTRA'], unit='hour'),
+                   Latitude(hdu.header['OBJCTDEC'], unit='deg'),
+                   frame='icrs', obstime=hdu.header['DATE-OBS'], 
+                   equinox=hdu.header['EQUINOX'])
+    except KeyError :
+        try :
+            o=SkyCoord(Longitude(hdu.header['MNTRA'], unit='hour'),
+                   Latitude(hdu.header['MNTDEC'], unit='deg'),
+                   frame='icrs', obstime=hdu.header['DATE-OBS'], 
+                   equinox=hdu.header['EQUINOX'])
+        except KeyError :
+            raise
+    return o
+
+import os, tempfile, shutil
+from StringIO import StringIO
+
+astrometry_cmd='solve-field -2 -p -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
+telescopes={'Galaxy':   (1,2),
+            'Cluster':  (14,16)}
+
+def solveField(hdu):
+    o=getFrameRaDec(hdu)
+    ra=o.ra.deg
+    dec=o.dec.deg
+    loapp, hiapp=telescopes[hdu.header['TELESCOP'].split()[1]]
+    td=tempfile.mkdtemp(prefix='field-solver')
+    try :
+        fn=tempfile.mkstemp(dir=td, suffix='.fits')
+        debug(td, fn)
+        hdu.writeto(fn[1])
+        debug((astrometry_cmd % (loapp, hiapp, ra, dec, fn[1])))
+        solver=os.popen(astrometry_cmd % (loapp, hiapp, ra, dec, fn[1]))
+        for ln in solver:
+            debug(ln.strip())
+        shdu=fits.open(StringIO(open(fn[1][:-5]+'.new').read()))
+        return shdu
+    except IOError :
+        return None
+    finally :
+        shutil.rmtree(td)
 
 
