@@ -399,16 +399,31 @@ def _solveField_local(hdu):
     finally :
         shutil.rmtree(td)
 
+from client import Client
+from StringIO import StringIO
 
+astrometryAPIkey=None
 
-def solveField(hdu, local=True, apikey=None, apiurl='http://nova.astrometry.net/api/'):
+def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astrometry.net/api/'):
+    if apikey is None :
+        if astrometryAPIkey is None :
+            print('You need an API key from astrometry.net to use network solver.')
+            return None
+        else :
+            apikey=astrometryAPIkey
+    cli=Client()
+    cli.login(apikey)
+    sio=StringIO()
+    hdu.writeto(sio)
+    sio.seek(0)
+    res=cli.send_request('upload',{},(name,sio.read()))
+    return res
+
+def solveField(hdu, name='brtjob', local=True, apikey=None, apiurl='http://nova.astrometry.net/api/'):
     '''
     Solve plate using local or remote (nova.astrometry.net) plate solver.
     '''
     if local :
         return _solveField_local(hdu)
     else :
-        if apikey is None :
-            print('You need an API key from astrometry.net to use network solver.')
-            return None
-        return _solveField_remote(hdu, apikey=apikey, apiurl=apiurl)
+        return _solveField_remote(hdu, name=name, apikey=apikey, apiurl=apiurl)
