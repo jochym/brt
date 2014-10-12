@@ -374,7 +374,7 @@ def getFrameRaDec(hdu):
 import os, tempfile, shutil
 from StringIO import StringIO
 
-astrometry_cmd='solve-field -2 -p -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
+astrometry_cmd='solve-field -2 -p -l 10 -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
 telescopes={'Galaxy':   (1,2),
             'Cluster':  (14,16)}
 
@@ -417,13 +417,63 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
     hdu.writeto(sio)
     sio.seek(0)
     res=cli.send_request('upload',{},(name,sio.read()))
-    return res
 
-def solveField(hdu, name='brtjob', local=True, apikey=None, apiurl='http://nova.astrometry.net/api/'):
+    while True:
+        stat = cli.sub_status(res['subid'], justdict=True)
+        debug('Got status:', stat)
+        jobs = stat.get('jobs', [])
+        if len(jobs):
+            for j in jobs:
+                if j is not None:
+                    break
+            if j is not None:
+                debug('Selecting job id', j)
+                job_id = j
+                break
+        time.sleep(5)
+
+    success = False
+    while True:
+        stat = cli.job_status(job_id, justdict=True)
+        debug('Got job status:', stat)
+        if stat.get('status','') in ['success']:
+            success = (stat['status'] == 'success')
+            break
+        time.sleep(5)
+
+    if success:
+        cli.job_status(job_id)
+        # result = c.send_request('jobs/%s/calibration' % opt.job_id)
+        # dprint('Calibration:', result)
+        # result = c.send_request('jobs/%s/tags' % opt.job_id)
+        # dprint('Tags:', result)
+        # result = c.send_request('jobs/%s/machine_tags' % opt.job_id)
+        # dprint('Machine Tags:', result)
+        # result = c.send_request('jobs/%s/objects_in_field' % opt.job_id)
+        # dprint('Objects in field:', result)
+        #result = c.send_request('jobs/%s/annotations' % opt.job_id)
+        #dprint('Annotations:', result)
+
+        # We don't need the API for file retrival, just construct URL
+        url = apiurl.replace('/api/', '/new_fits_file/%i' % job_id)
+
+        debug('Retrieving file from', url)
+        f = urlopen(url)
+        shdu=fits.open(StringIO(f.read()))
+    
+    return shdu
+
+def solveField(hdu, name='brtjob', local=None, apikey=None, apiurl='http://nova.astrometry.net/api/'):
     '''
     Solve plate using local or remote (nova.astrometry.net) plate solver.
     '''
-    if local :
+    if local==True :
         return _solveField_local(hdu)
-    else :
+    elif local==False :
         return _solveField_remote(hdu, name=name, apikey=apikey, apiurl=apiurl)
+    elif local is None :
+        shdu = _solveField_local(hdu)
+        if shdu is None :
+            print('Local solver failed. Trying remote ...')
+            shdu = _solveField_remote(hdu, name=name, apikey=apikey, apiurl=apiurl)
+        return shdu

@@ -26,7 +26,7 @@ __debug=False
 
 def dprint(*args):
     if __debug :
-        print(*args)
+        print(args)
 
 class Client(object):
     default_url = 'http://nova.astrometry.net/api/'
