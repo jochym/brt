@@ -4,16 +4,20 @@
 
 from __future__ import print_function, division
 
+import os, tempfile, shutil
 from requests import session
+import requests
 from bs4 import BeautifulSoup
-from StringIO import StringIO
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO, BytesIO
 from zipfile import ZipFile
 import time
 from os import path
 
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
-from urllib2 import urlopen
 
 global DEBUG
 
@@ -371,8 +375,6 @@ def getFrameRaDec(hdu):
             raise
     return o
 
-import os, tempfile, shutil
-from StringIO import StringIO
 
 astrometry_cmd='solve-field -2 -p -l 10 -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
 telescopes={'Galaxy':   (1,2),
@@ -400,7 +402,6 @@ def _solveField_local(hdu):
         shutil.rmtree(td)
 
 from client import Client
-from StringIO import StringIO
 
 astrometryAPIkey=None
 
@@ -458,8 +459,8 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
         url = apiurl.replace('/api/', '/new_fits_file/%i' % job_id)
 
         debug('Retrieving file from', url)
-        f = urlopen(url)
-        shdu=fits.open(StringIO(f.read()))
+        r = requests.get(url)
+        shdu=fits.open(StringIO(r.content))
     
     return shdu
 
