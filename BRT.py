@@ -8,10 +8,7 @@ import os, tempfile, shutil
 from requests import session
 import requests
 from bs4 import BeautifulSoup
-try:
-    from StringIO import StringIO
-except ImportError:
-    from io import StringIO, BytesIO
+from io import StringIO, BytesIO
 from zipfile import ZipFile
 import time
 from os import path
@@ -46,10 +43,14 @@ def error(*args):
 class Telescope :
     
     url='http://www.telescope.org/'
-    cameratypes={'Galaxy':'2',
-                'Cluster':'3',
-                'Constellation':'1',
-                'Planet':'5'}
+    cameratypes={
+        'constellation':'1',
+        'galaxy':       '2',
+        'cluster':      '3',
+        'planet':'5',
+        'coast':'6',
+        'pirate':'7',
+    }
     
     def __init__(self,user,passwd):
         self.s=None
@@ -65,7 +66,9 @@ class Telescope :
                    'password': self.passwd,
                    'stayloggedin': 'true'}
             
+        debug('Get session ...')
         self.s=session()
+        debug('Logging in ...')
         self.s.post(self.url+'login.php', data=payload)
 
     def logout(self):
@@ -73,8 +76,8 @@ class Telescope :
             self.s.post(self.url+'logout.php')
             self.s=None
 
-    def get_obs_list(self, t=None, dt=1, filtertype='', camera=''):
-        '''Get the dt days of observations taken no later then t. 
+    def get_obs_list(self, t=None, dt=1, filtertype='', camera='', hour=16, minute=0):
+        '''Get the dt days of observations taken no later then time in t. 
 
             Input
             ------
@@ -93,7 +96,7 @@ class Telescope :
         assert(self.s != None)
         
         if t==None :
-            t=time.time()
+            t=time.time()-time.timezone
 
 
         st=time.gmtime(t-86400*dt)
@@ -109,15 +112,15 @@ class Telescope :
         debug('%d/%d/%d -> %d/%d/%d' % (d,m,y,de,me,ye))
 
         try :
-            telescope=self.cameratypes[camera]
+            telescope=self.cameratypes[camera.lower()]
         except KeyError:
             telescope=''
 
         searchdat = {
             'sort1':'completetime',
             'sort1order':'desc',
-            'searchearliestcom[]':[d, m, y, '16','0'],
-            'searchlatestcom[]':  [de,me,ye,'16','0'],
+            'searchearliestcom[]':[d, m, y, str(hour),str(minute)],
+            'searchlatestcom[]':  [de,me,ye,str(hour),str(minute)],
             'searchstatus[]':['1'],
             'resultsperpage':'200',
             'searchfilter':filtertype,
@@ -130,7 +133,7 @@ class Telescope :
 
         request = self.s.post(self.url+'v3job-search-query.php',
                          data=searchdat, headers=headers)
-        soup = BeautifulSoup(request.text)
+        soup = BeautifulSoup(request.text,'lxml')
 
         jlst=[]
         for l in soup.findAll('tr'):
@@ -154,7 +157,7 @@ class Telescope :
         #print jid
         obs['jid']=jid
         rq=self.s.post(self.url+('v3cjob-view.php?jid=%d' % jid))
-        soup = BeautifulSoup(rq.text)
+        soup = BeautifulSoup(rq.text, 'lxml')
         for l in soup.findAll('tr'):
             info(l)
             txt=''
@@ -217,7 +220,7 @@ class Telescope :
                        ('' if cube else '-layers', obs['jid'])),
                       stream=True)
 
-        return StringIO(rq.content) if cube else ZipFile(StringIO(rq.content))
+        return BytesIO(rq.content) if cube else ZipFile(BytesIO(rq.content))
 
 
     def download_obs_processed(self,obs=None, directory='.', cube=False):
@@ -240,7 +243,7 @@ class Telescope :
                           ('imageengine-request.php?jid=%d&type=%d' % 
                             (obs['jid'], 1 if cube else 3 )))
 
-            soup = BeautifulSoup(rq.text)
+            soup = BeautifulSoup(rq.text, 'lxml')
             dlif=soup.find('iframe')
             
             try :
@@ -279,7 +282,7 @@ class Telescope :
                           ('imageengine-request.php?jid=%d&type=%d' % 
                             (obs['jid'], 1 if cube else 3 )))
 
-            soup = BeautifulSoup(rq.text)
+            soup = BeautifulSoup(rq.text,'lxml')
             dlif=soup.find('iframe')
             
             try :
@@ -295,14 +298,16 @@ class Telescope :
         return None
 
     def extractTicket(self,rq):
-        soup = BeautifulSoup(rq.text)
-        return int(soup.find('input', attrs={
+        soup = BeautifulSoup(rq.text, 'lxml')
+        t=int(soup.find('input', attrs={
                         'name':'ticket',
                         'type':'hidden'})['value'])
+        debug('Ticket:', t)
+        return t
 
 
-    def submitRADECjob(self, obj, exposure=1000, tele='Galaxy', 
-                        filt='BVR', darkframe=True, 
+    def submitRADECjob(self, obj, exposure=30000, tele='COAST', 
+                        filt='Colour', darkframe=True, 
                         name='RaDec object', comment='AutoSubmit'):
         assert(self.s != None)
         ra=obj.ra.to_string(unit='hour', sep=' ',
@@ -318,10 +323,13 @@ class Telescope :
         u=self.url+'/request-constructor.php'
         r=self.s.get(u+'?action=new')
         t=self.extractTicket(r)
+        debug('GoTo Part 1')
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part1'})
         t=self.extractTicket(r)
+        debug('GoTo RADEC')
         r=self.s.post(u,data={'ticket':t,'action':'part1-go-radec'})
         t=self.extractTicket(r)
+        debug('Save RADEC')
         r=self.s.post(u,data={'ticket':t,'action':'part1-radec-save',
                              'raHours':ra[0],
                              'raMins':ra[1],
@@ -333,15 +341,19 @@ class Telescope :
                              'decFract':dec[2].split('.')[1],
                              'newObjectName':name})
         t=self.extractTicket(r)
+        debug('GoTo Part 2')
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
         t=self.extractTicket(r)
+        debug('Save Telescope')
         r=self.s.post(u,data={'ticket':t, 
                                 'action':'part2-save', 
                                 'submittype':'Save',
                                 'newTelescopeSelection':tele})
         t=self.extractTicket(r)
+        debug('GoTo Part 3')
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
         t=self.extractTicket(r)
+        debug('Save Exposure')
         r=self.s.post(u,data={'ticket':t, 
                                 'action':'part3-save', 
                                 'submittype':'Save',
@@ -350,41 +362,60 @@ class Telescope :
                                 'newFilterSelection':filt,
                                 'newRequestComments':comment})
         t=self.extractTicket(r)
+        debug('Submit')
         r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
         return r
         
-    def submitVarStar(self, name, expos=60000, filt='BVR',comm=''):
+    def submitVarStar(self, name, expos=60000, filt='Colour',comm='', tele='COAST'):
         o=SkyCoord.from_name(name)
-        self.submitRADECjob(o, name=name, comment=comm, 
-                                exposure=expos, filt=filt)
+        return self.submitRADECjob(o, name=name, comment=comm, 
+                                exposure=expos, filt=filt, tele=tele)
 
 
 def getFrameRaDec(hdu):
+    if 'OBJCTRA' in hdu.header:
+        ra=hdu.header['OBJCTRA']
+        dec=hdu.header['OBJCTDEC']
+    elif 'MNTRA' in hdu.header :
+        ra=hdu.header['MNTRA']
+        dec=hdu.header['MNTDEC']        
+    elif 'RA-TEL' in hdu.header :
+        ra=hdu.header['RA-TEL']
+        dec=hdu.header['DEC-TEL']                
+    else :
+        raise KeyError
+    
     try :
-        o=SkyCoord(Longitude(hdu.header['OBJCTRA'], unit='hour'),
-                   Latitude(hdu.header['OBJCTDEC'], unit='deg'),
-                   frame='icrs', obstime=hdu.header['DATE-OBS'], 
-                   equinox=hdu.header['EQUINOX'])
+        eq=hdu.header['EQUINOX']
     except KeyError :
-        try :
-            o=SkyCoord(Longitude(hdu.header['MNTRA'], unit='hour'),
-                   Latitude(hdu.header['MNTDEC'], unit='deg'),
-                   frame='icrs', obstime=hdu.header['DATE-OBS'], 
-                   equinox=hdu.header['EQUINOX'])
-        except KeyError :
-            raise
+        eq=2000.0
+    
+    o=SkyCoord(Longitude(ra, unit='hour'),
+               Latitude(dec, unit='deg'),
+               frame='icrs', obstime=hdu.header['DATE-OBS'], 
+               equinox=eq)
     return o
 
 
-astrometry_cmd='solve-field -2 -p -l 10 -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
-telescopes={'Galaxy':   (1,2),
-            'Cluster':  (14,16)}
+astrometry_cmd='solve-field -p -z 2 -l 15 -O -L %d -H %d -u app -3 %f -4 %f -5 5 %s'
+telescopes={
+    'galaxy':   (1,2),
+    'cluster':  (14,16),
+    'coast': (1, 2),
+    'pirate': (1, 2),
+}
 
 def _solveField_local(hdu):
     o=getFrameRaDec(hdu)
     ra=o.ra.deg
     dec=o.dec.deg
-    loapp, hiapp=telescopes[hdu.header['TELESCOP'].split()[1]]
+    tel = hdu.header['TELESCOP'].lower()
+    if 'brt' in tel:
+        tel=tel.split()[1]
+    else :
+        tel=tel.split()[0]
+        
+    loapp, hiapp=telescopes[tel]
     td=tempfile.mkdtemp(prefix='field-solver')
     try :
         fn=tempfile.mkstemp(dir=td, suffix='.fits')
@@ -394,14 +425,14 @@ def _solveField_local(hdu):
         solver=os.popen(astrometry_cmd % (loapp, hiapp, ra, dec, fn[1]))
         for ln in solver:
             debug(ln.strip())
-        shdu=fits.open(StringIO(open(fn[1][:-5]+'.new').read()))
+        shdu=fits.open(BytesIO(open(fn[1][:-5]+'.new','rb').read()))
         return shdu
     except IOError :
         return None
     finally :
         shutil.rmtree(td)
 
-from client import Client
+from .astrometry import Client
 
 astrometryAPIkey=None
 
@@ -414,10 +445,10 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
             apikey=astrometryAPIkey
     cli=Client()
     cli.login(apikey)
-    sio=StringIO()
-    hdu.writeto(sio)
-    sio.seek(0)
-    res=cli.send_request('upload',{},(name,sio.read()))
+    bio=BytesIO()
+    hdu.writeto(bio)
+    bio.seek(0)
+    res=cli.send_request('upload',{},(name,bio.read()))
 
     while True:
         stat = cli.sub_status(res['subid'], justdict=True)
@@ -460,7 +491,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
 
         debug('Retrieving file from', url)
         r = requests.get(url)
-        shdu=fits.open(StringIO(r.content))
+        shdu=fits.open(BytesIO(r.content))
     
     return shdu
 
