@@ -4,12 +4,15 @@ import os
 import sys
 import time
 import base64
-from urllib2 import urlopen
-from urllib2 import Request
-from urllib2 import HTTPError
-from urllib import urlencode
-from urllib import quote
-from exceptions import Exception
+
+from future.standard_library import install_aliases
+install_aliases()
+
+from urllib.parse import urlparse, urlencode, quote
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError
+
+#from exceptions import Exception
 from email.mime.multipart import MIMEMultipart
 
 from email.mime.base import MIMEBase
@@ -22,7 +25,7 @@ def json2python(data):
     try:
         return json.loads(data)
     except:
-        pass
+        raise
     return None
 python2json = json.dumps
 
@@ -43,6 +46,45 @@ class Client(object):
         return self.apiurl + service
 
     def send_request(self, service, args={}, file_args=None):
+        '''
+        service: string
+        args: dict
+        '''
+        
+        import requests
+        
+        if self.session is not None:
+            args.update({ 'session' : self.session })
+        print('Python:', args)
+        json = python2json(args)
+        print('Sending json:', json)
+        url = self.get_url(service)
+        print('Sending to URL:', url)
+        if file_args is not None:
+            print(file_args[0])
+            files = {'file': (file_args[0], file_args[1], 'application/octet-stream')}
+            data = {'request-json': json}
+            r = requests.post(url, data=data, files=files)
+        else :
+            # Else send x-www-form-encoded
+            data = {'request-json': json}
+            print('Sending form data:', data)
+            r = requests.post(url, data=data)
+
+        print('Got json:', r.text)
+        result = json2python(r.text)
+        print('Got result:', result)
+        stat = result.get('status')
+        print('Got status:', stat)
+        if stat == 'error':
+            errstr = result.get('errormessage', '(none)')
+            raise RequestError('server error message: ' + errstr)
+        return result
+
+
+
+
+    def old_send_request(self, service, args={}, file_args=None):
         '''
         service: string
         args: dict
@@ -68,7 +110,7 @@ class Client(object):
             mp = MIMEMultipart('form-data', None, [m1, m2])
 
             # Make a custom generator to format it the way we need.
-            from cStringIO import StringIO
+            from io import StringIO, BytesIO
             from email.generator import Generator
 
             class MyGenerator(Generator):
@@ -85,16 +127,19 @@ class Client(object):
                     # doesn't provide the flexibility to override, so we
                     # have to copy-n-paste-n-modify.
                     for h, v in msg.items():
-                        print(('%s: %s\r\n' % (h,v)), end='', file=self._fp)
+                        #print(('%s: %s\r\n' % (h,v)), end='', file=self._fp)
+                        print('Writing header:',h, v)
+                        self._fp.write(('%s: %s\r\n' % (h,v)))
                     # A blank line always separates headers from body
-                    print('\r\n', end='', file=self._fp)
+                    #print('\r\n', end='', file=self._fp)
+                    self._fp.write('\r\n')
 
                 # The _write_multipart method calls "clone" for the
                 # subparts.  We hijack that, setting root=False
                 def clone(self, fp):
                     return MyGenerator(fp, root=False)
 
-            fp = StringIO()
+            fp = BytesIO()
             g = MyGenerator(fp)
             g.flatten(mp)
             data = fp.getvalue()
@@ -104,7 +149,7 @@ class Client(object):
             # Else send x-www-form-encoded
             data = {'request-json': json}
             print('Sending form data:', data)
-            data = urlencode(data)
+            data = urlencode(data).encode('ascii')
             print('Sending data:', data)
             headers = {}
 
