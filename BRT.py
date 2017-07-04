@@ -1,8 +1,8 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # coding: utf-8
 
-from __future__ import print_function, division
+from __future__ import print_function, division, absolute_import
 
 import os, tempfile, shutil
 from requests import session
@@ -52,13 +52,14 @@ class Telescope :
         'pirate':'7',
     }
     
-    def __init__(self,user,passwd):
+    def __init__(self,user,passwd,cache='.cache'):
         self.s=None
         self.user=user
         self.passwd=passwd
         self.tout=60
         self.retry=15
         self.login()
+        self.cache=cache
         
     def login(self):
         payload = {'action': 'login',
@@ -200,7 +201,7 @@ class Telescope :
                         ('' if cube else '-layers', obs['jid'])),
                       stream=True)
                       
-        fn = ('job_%(jid)d.' % obs) + ('fits' if cube else 'zip')
+        fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         with open(path.join(directory, fn), 'wb') as fd:
             for chunk in rq.iter_content(512):
                 fd.write(chunk)
@@ -215,12 +216,16 @@ class Telescope :
         assert(obs!=None)
         assert(self.s != None)
         
-        rq=self.s.get(self.url+
-                      ('v3image-download%s.php?jid=%d' %
-                       ('' if cube else '-layers', obs['jid'])),
-                      stream=True)
-
-        return BytesIO(rq.content) if cube else ZipFile(BytesIO(rq.content))
+        fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
+        fp = path.join(self.cache,'jobs',fn[0],fn[1],fn)
+        if not path.isfile(fp) :
+            debug('Getting %s from server' % fp)
+            os.makedirs(path.dirname(fp), exist_ok=True)
+            self.download_obs(obs,path.dirname(fp),cube)
+        else :
+            debug('Getting %s from cache' % fp)
+        content = open(fp,'rb')
+        return content if cube else ZipFile(content)
 
 
     def download_obs_processed(self,obs=None, directory='.', cube=False):
@@ -405,7 +410,7 @@ telescopes={
     'pirate': (1, 2),
 }
 
-def _solveField_local(hdu):
+def _solveField_local(hdu, cleanup=True):
     o=getFrameRaDec(hdu)
     ra=o.ra.deg
     dec=o.dec.deg
@@ -430,13 +435,14 @@ def _solveField_local(hdu):
     except IOError :
         return None
     finally :
-        shutil.rmtree(td)
+        if cleanup :
+            shutil.rmtree(td)
 
-from .astrometry import Client
+from am import Client
 
 astrometryAPIkey=None
 
-def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astrometry.net/api/'):
+def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astrometry.net/api/', cleanup=True):
     if apikey is None :
         if astrometryAPIkey is None :
             print('You need an API key from astrometry.net to use network solver.')
@@ -495,14 +501,14 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
     
     return shdu
 
-def solveField(hdu, name='brtjob', local=None, apikey=None, apiurl='http://nova.astrometry.net/api/'):
+def solveField(hdu, name='brtjob', local=None, apikey=None, apiurl='http://nova.astrometry.net/api/', cleanup=True):
     '''
     Solve plate using local or remote (nova.astrometry.net) plate solver.
     '''
     if local==True :
-        return _solveField_local(hdu)
+        return _solveField_local(hdu, cleanup=cleanup)
     elif local==False :
-        return _solveField_remote(hdu, name=name, apikey=apikey, apiurl=apiurl)
+        return _solveField_remote(hdu, name=name, apikey=apikey, apiurl=apiurl, cleanup=cleanup)
     elif local is None :
         shdu = _solveField_local(hdu)
         if shdu is None :
