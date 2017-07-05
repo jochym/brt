@@ -24,17 +24,21 @@ def debug_prn(*args,**kwargs):
     if kwargs['lvl'] <= DEBUG:
         print(*args)
         
-def info(*args):
-    debug_prn(' INFO:',*args,lvl=5)
-    
 def debug(*args):
-    debug_prn('DEBUG:',*args,lvl=4)
+    debug_prn('DEBUG:',*args,lvl=5)
+
+def info(*args):
+    debug_prn(' INFO:',*args,lvl=2)
     
 def warning(*args):
     debug_prn(' WARN:',*args,lvl=1)
 
 def error(*args):
     debug_prn('ERROR:',*args,lvl=0)
+
+
+def cleanup(s):
+    return s.encode('ascii','ignore').decode('ascii','ignore')
 
 
 # TODO: Cache the downloads to not re-download the same data again if possible.
@@ -155,12 +159,12 @@ class Telescope :
         assert(self.s != None)
         
         obs={}
-        #print jid
+        debug(jid)
         obs['jid']=jid
         rq=self.s.post(self.url+('v3cjob-view.php?jid=%d' % jid))
         soup = BeautifulSoup(rq.text, 'lxml')
         for l in soup.findAll('tr'):
-            info(l)
+            debug(cleanup(l.text))
             txt=''
             for f in l.findAll('td'):
                 if txt.find('Object Type') >= 0:
@@ -180,7 +184,7 @@ class Telescope :
                     obs['status']= (f.text == 'Success')
 
                 txt=f.text
-        debug('%(jid)d [%(tele)s, %(filter)s, %(status)s]: %(type)s %(oid)s %(exp)s' % obs)
+        info('%(jid)d [%(tele)s, %(filter)s, %(status)s]: %(type)s %(oid)s %(exp)s' % obs)
         
         return obs
 
@@ -219,11 +223,11 @@ class Telescope :
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         fp = path.join(self.cache,'jobs',fn[0],fn[1],fn)
         if not path.isfile(fp) :
-            debug('Getting %s from server' % fp)
+            info('Getting %s from server' % fp)
             os.makedirs(path.dirname(fp), exist_ok=True)
             self.download_obs(obs,path.dirname(fp),cube)
         else :
-            debug('Getting %s from cache' % fp)
+            info('Getting %s from cache' % fp)
         content = open(fp,'rb')
         return content if cube else ZipFile(content)
 

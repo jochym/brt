@@ -148,7 +148,7 @@ def analyse_job(obs, cat='GCVS', local=True):
 #    blocked_names=[]
     try:
         jid=obs['jid']
-    except TypeError:
+    except TypeError :
         jid=obs
         obs=brt.get_job(jid)
     
@@ -161,7 +161,7 @@ def analyse_job(obs, cat='GCVS', local=True):
         vsl=[]
         print(' Filters: ', end='')
         for n,h in enumerate(shdul):
-            print(h.header['FILTER'],end='')
+            print(h.header['FILTER'],end=',')
             sys.stdout.flush()
             w=wcs.WCS(h.header)
             if obs['type']=='RADEC':
@@ -242,15 +242,23 @@ def plot_frame(h, vsl=None):
     show()
 
 
-BRT.DEBUG=3
-jid=293657
-vlst=analyse_job(jid)
-plot_job(jid)
+BRT.DEBUG=1
+#jid=293657
+#vlst=analyse_job(jid)
+#plot_job(jid)
 
-if False :
-    for jid in brt.get_obs_list(dt=1)[:20]:
+if len(sys.argv)>1 :
+    for i in sys.argv[1:]:
+        jid = int(i)
+        vlst=analyse_job(jid)
+        plot_job(jid)
+        for f, vsl in vlst:
+            for vs in vsl:
+                print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
+else :
+    for jid in brt.get_obs_list(dt=1):
         obs=brt.get_job(jid)
-        if obs['filter'] in ('Clear',):
+        if obs['filter'] not in set(('BVR','B','V','R','Blue', 'Green', 'Red', 'Colour')):
             continue
         vlst=analyse_job(obs)
         for f, vsl in vlst:

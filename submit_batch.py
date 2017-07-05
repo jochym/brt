@@ -37,5 +37,12 @@ def submitVS(t):
     t.submitVarStar('DX Vul',comm='Mira')
     t.submitVarStar('EQ Lyr',comm='Mira')
 
-submitVS(brt)
+
+if len(sys.argv)>1 :
+    ex=90
+    if len(sys.argv)>2 :
+        ex=int(sys.argv[2])
+    brt.submitVarStar(sys.argv[1],expos=ex)
+else :
+    submitVS(brt)
 
