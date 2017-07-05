@@ -243,18 +243,21 @@ def plot_frame(h, vsl=None):
 
 
 BRT.DEBUG=3
-#vlst=analyse_job(282646)
-#plot_job(jid)
-for jid in brt.get_obs_list(dt=1)[:20]:
-    obs=brt.get_job(jid)
-    if obs['filter'] in ('Clear',):
-        continue
-    vlst=analyse_job(obs)
-    for f, vsl in vlst:
-        for vs in vsl:
-            print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
-        #plot_frame(f,vsl)
-        print()
+jid=293657
+vlst=analyse_job(jid)
+plot_job(jid)
+
+if False :
+    for jid in brt.get_obs_list(dt=1)[:20]:
+        obs=brt.get_job(jid)
+        if obs['filter'] in ('Clear',):
+            continue
+        vlst=analyse_job(obs)
+        for f, vsl in vlst:
+            for vs in vsl:
+                print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
+            #plot_frame(f,vsl)
+            print()
 
         
 
