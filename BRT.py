@@ -15,6 +15,7 @@ from os import path
 
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
+from astropy.time import Time
 
 global DEBUG
 
@@ -408,9 +409,9 @@ def getFrameRaDec(hdu):
         raise KeyError
     
     try :
-        eq=hdu.header['EQUINOX']
+        eq=Time(hdu.header['EQUINOX'], format='decimalyear')
     except KeyError :
-        eq=2000.0
+        eq=Time(2000, format='decimalyear')
     
     o=SkyCoord(Longitude(ra, unit='hour'),
                Latitude(dec, unit='deg'),

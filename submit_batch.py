@@ -28,21 +28,26 @@ BRT.astrometryAPIkey=config['astrometry.net']['apikey']
 def submitVS(t):
     #t.submitVarStar('QZ Vir',comm='Cataclismic')
     #t.submitVarStar('RS Leo',comm='Unkn', expos=80)
-    t.submitVarStar('SS Cyg',comm='Mira')
-    t.submitVarStar('EU Cyg',comm='Mira')
-    t.submitVarStar('IP Cyg',comm='Mira', expos=180)
-    t.submitVarStar('V686 Cyg',comm='Mira')
-    t.submitVarStar('AS Lac',comm='Mira')
-    t.submitVarStar('BI Her',comm='Mira')
-    t.submitVarStar('DX Vul',comm='Mira')
-    t.submitVarStar('EQ Lyr',comm='Mira')
+    
+    t.submitVarStar('SS Cyg',comm='Mira', expos=180)
+    t.submitVarStar('EU Cyg',comm='Mira', expos=180)
+    t.submitVarStar('IP Cyg',comm='Mira', expos=240)
+    t.submitVarStar('V686 Cyg',comm='Mira',expos=240)
+    t.submitVarStar('AS Lac',comm='Mira', expos=120)
+    t.submitVarStar('BI Her',comm='Mira', expos=240)
+    t.submitVarStar('DX Vul',comm='Mira', expos=240)
+    t.submitVarStar('EQ Lyr',comm='Mira', expos=240)
+    t.submitVarStar('AG Dra',comm='AAVSO', expos=30)
 
 
 if len(sys.argv)>1 :
     ex=90
+    comment=""
     if len(sys.argv)>2 :
         ex=int(sys.argv[2])
-    brt.submitVarStar(sys.argv[1],expos=ex)
+    if len(sys.argv)>3 :
+        comment=sys.argv[3]
+    brt.submitVarStar(sys.argv[1],expos=ex,comm=comment)
 else :
     submitVS(brt)
 

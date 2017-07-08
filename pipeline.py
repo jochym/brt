@@ -242,10 +242,17 @@ def plot_frame(h, vsl=None):
     show()
 
 
+def get_VS_sequence(vs):
+    pass
+
 BRT.DEBUG=1
 #jid=293657
 #vlst=analyse_job(jid)
 #plot_job(jid)
+
+import re
+
+vsre = re.compile('([V][0-9]+)|([R-Z])|([R-Z][R-Z])|([A-IK-Q][A-IK-Z])')
 
 if len(sys.argv)>1 :
     for i in sys.argv[1:]:
@@ -261,11 +268,19 @@ else :
         if obs['filter'] not in set(('BVR','B','V','R','Blue', 'Green', 'Red', 'Colour')):
             continue
         vlst=analyse_job(obs)
+        empty=True
         for f, vsl in vlst:
             for vs in vsl:
+                vsname = vs[0].upper().split()
+                if len(vsname[-1]) != 3 :
+                    continue
+                if not vsre.match(vsname[0]) :
+                    continue
+                empty = False
                 print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
+                sq = get_VS_sequence(vs[0])
             #plot_frame(f,vsl)
-            print()
+            if not empty : print()
 
         
 
