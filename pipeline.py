@@ -288,7 +288,7 @@ else :
         for f, vsl in vlst:
             for vs in vsl:
                 vsname = vs[0].upper().split()
-                if len(vsname[-1]) != 3 and len(vsname) != 2:
+                if len(vsname[-1]) != 3 or len(vsname) != 2:
                     continue
                 if not vsre.match(vsname[0]) :
                     continue
