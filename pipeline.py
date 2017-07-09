@@ -17,12 +17,17 @@ import astropy.units as u
 from pyvo import conesearch
 import sys
 from pylab import *
+import diskcache
 
 config = configparser.ConfigParser()
 config.read('telescope.ini')
 
-brt=BRT.Telescope(config['telescope.org']['user'],config['telescope.org']['password'])
+brt=BRT.Telescope(config['telescope.org']['user'],
+                    config['telescope.org']['password'],
+                    config['cache']['jobs'])
 BRT.astrometryAPIkey=config['astrometry.net']['apikey']
+
+wcscache=diskcache.Cache(config['cache']['wcs'])
 
 def get_obs_hdul(brt, jid=None, obs=None):
     '''
@@ -46,6 +51,7 @@ def get_obs_shdul(brt, jid=None, obs=None):
     else :
         return None
     hdul=get_obs_hdul(brt, obs=o)
+    jid=o['jid']
     filt=o['filter']
     if filt == 'Colour':
         filt='R,G,B'
@@ -58,7 +64,17 @@ def get_obs_shdul(brt, jid=None, obs=None):
         if 'EPOCH' in h.header and h.header['EPOCH'].startswith('REAL'):
             h.header['EPOCH']=2000.0
             h.header['EQUINOX']=2000.0
-
+    shdul=[]
+    for h in hdul:
+        sjid='_'.join([str(jid), h.header['FILTER']])
+        try :
+            shdul.append(wcscache[sjid])
+        except KeyError :
+            h=BRT.solveField(h,name=str(jid),local=True)
+            if h :
+                wcscache[sjid]=h[0]
+                shdul.append(h[0])
+    return shdul
     shdul=[BRT.solveField(h,name=str(jid),local=True) for h in hdul]
     shdul=[h[0] for h in shdul if h]
     return shdul
