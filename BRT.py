@@ -9,9 +9,11 @@ from requests import session
 import requests
 from bs4 import BeautifulSoup
 from io import StringIO, BytesIO
-from zipfile import ZipFile
+from zipfile import ZipFile, BadZipFile
 import time
 from os import path
+
+import diskcache
 
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
@@ -57,7 +59,7 @@ class Telescope :
         'pirate':'7',
     }
     
-    def __init__(self,user,passwd,cache='.cache'):
+    def __init__(self,user,passwd,cache='.cache/jobs'):
         self.s=None
         self.user=user
         self.passwd=passwd
@@ -213,7 +215,7 @@ class Telescope :
         return fn
 
 
-    def get_obs(self,obs=None, cube=False):
+    def get_obs(self,obs=None, cube=False, recurse=True):
         '''Get the raw observation obs (obtained from get_job) into zip 
         file-like object. The function returns ZipFile structure of the 
         downloaded data.'''
@@ -222,7 +224,7 @@ class Telescope :
         assert(self.s != None)
         
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
-        fp = path.join(self.cache,'jobs',fn[0],fn[1],fn)
+        fp = path.join(self.cache,fn[0],fn[1],fn)
         if not path.isfile(fp) :
             info('Getting %s from server' % fp)
             os.makedirs(path.dirname(fp), exist_ok=True)
@@ -230,8 +232,16 @@ class Telescope :
         else :
             info('Getting %s from cache' % fp)
         content = open(fp,'rb')
-        return content if cube else ZipFile(content)
-
+        try :
+            return content if cube else ZipFile(content)
+        except zipfile.BadZipFile :
+            # Probably corrupted download. Try again once.
+            content.close()
+            os.remove(fp)
+            if recurse :
+                return self.get_obs(obs, cube, False)
+            else :
+                return None
 
     def download_obs_processed(self,obs=None, directory='.', cube=False):
         '''Download the raw observation obs (obtained from get_job) into zip 
