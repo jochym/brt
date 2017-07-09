@@ -69,12 +69,16 @@ def get_obs_shdul(brt, jid=None, obs=None):
     for h in hdul:
         sjid='_'.join([str(jid), h.header['FILTER']])
         try :
-            shdul.append(wcscache[sjid])
+            h=wcscache[sjid]
         except KeyError :
             h=BRT.solveField(h,name=str(jid),local=True)
             if h :
-                wcscache[sjid]=h[0]
-                shdul.append(h[0])
+                h=h[0]
+                wcscache[sjid]=h
+            else :
+                wcscache[sjid]=h
+        if h :
+            shdul.append(h)
     return shdul
 #    shdul=[BRT.solveField(h,name=str(jid),local=True) for h in hdul]
 #    shdul=[h[0] for h in shdul if h]
