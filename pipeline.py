@@ -76,9 +76,9 @@ def get_obs_shdul(brt, jid=None, obs=None):
                 wcscache[sjid]=h[0]
                 shdul.append(h[0])
     return shdul
-    shdul=[BRT.solveField(h,name=str(jid),local=True) for h in hdul]
-    shdul=[h[0] for h in shdul if h]
-    return shdul
+#    shdul=[BRT.solveField(h,name=str(jid),local=True) for h in hdul]
+#    shdul=[h[0] for h in shdul if h]
+#    return shdul
 
 
 def searchVS(h, cat='GCVS', caturl=None, maxSearchRadius=5):
