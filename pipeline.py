@@ -28,6 +28,7 @@ brt=BRT.Telescope(config['telescope.org']['user'],
 BRT.astrometryAPIkey=config['astrometry.net']['apikey']
 
 wcscache=diskcache.Cache(config['cache']['wcs'])
+seqcache=diskcache.Cache(config['cache']['seq'])
 
 def get_obs_hdul(brt, jid=None, obs=None):
     '''
@@ -111,54 +112,6 @@ def searchVS(h, cat='GCVS', caturl=None, maxSearchRadius=5):
     r=conesearch(caturl,pos=list(cen),radius=rad)
     return r
 
-def analyseJob_old(jid, cat='GCVS'):
-    obs=brt.get_job(jid)
-    if obs['type']!='SSBODY' :
-        print(jid, obs['filter'], obs['exp'], obs['type'], obs['oid'])
-        
-        z=brt.get_obs(obs,cube=False)
-        
-        hdul=[fits.open(BytesIO(z.read(name))) for name in z.namelist()]
-
-        for h,f in zip(hdul,obs['filter']):
-            h[0].header['FILTER']=f
-
-        shdul=[BRT.solveField(h[0],name=str(jid)) for h in hdul]
-        for n,h in enumerate(shdul):
-            print('Filter: ',hdul[n][0].header['FILTER'],end=' ')
-            if h is None :
-                print('Unable to solve the field!')
-                imshow(sqrt(hdul[n][0].data),aspect='equal')
-                continue
-            w=wcs.WCS(h[0].header)
-            imshow(sqrt(h[0].data),aspect='equal')
-            plot(h[0].header['NAXIS1']/2,h[0].header['NAXIS2']/2,'r+',ms=30)
-            if obs['type']=='RADEC':
-                obj=SkyCoord(obs['oid'], unit=(u.hourangle, u.deg))
-            else :
-                obj=SkyCoord.from_name(obs['type']+obs['oid'])
-            pix=w.all_world2pix(array([[obj.ra.deg,obj.dec.deg]]),0)[0]
-            plot(pix[0],pix[1],'r+',ms=20)
-            plot(pix[0],pix[1],'ro',fillstyle='none', ms=12)
-            r=searchVS(h)
-            print("Number of VS:", len(r))
-            for rec in r:
-                s={k:rec[k] for k in rec.keys()}
-                s['Name'] = s['Name'].decode('ascii')
-                vsname='%(Name)-25s' % s
-                # filter out NSV and VSX hits (leave just GCVS marked stars)
-                if vsname.find('NSV')<0 and vsname.find('VSX')<0 :
-                    pix=w.all_world2pix(array([[rec.ra,rec.dec]]),0)[0]
-                    # reject out of frame stars
-                    if 0 < pix[0] < h[0].header['NAXIS1'] and 0 < pix[1] < h[0].header['NAXIS2'] :
-                        plot(pix[0],pix[1],'ro',fillstyle='none')
-                        annotate(vsname, pix, xytext=(5,-7), textcoords='offset points', color='y')
-                        print('%(Name)25s %(Period)12.6f %(min)6.2f - %(max)6.2f ' % s)
-            xlim(0,h[0].header['NAXIS1'])
-            ylim(0,h[0].header['NAXIS2'])
-            show()
-        print()
-
 def analyse_job(obs, cat='GCVS', local=True):
     blocked_names=['OGLE', 'MACHO', 'NSV', 'VSX', 'CSS', 'SWASP', 'CAG', 'ASAS', 'SDSS', 'HAT']
 #    blocked_names=[]
@@ -195,7 +148,7 @@ def analyse_job(obs, cat='GCVS', local=True):
                     # reject out of frame stars
                     if 0 < pix[0] < h.header['NAXIS1'] and 0 < pix[1] < h.header['NAXIS2'] :
                         #print('    %-30s' % vsname, '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % s)
-                        vsl[n][1].append([vsname, s])
+                        vsl[n][1].append([s['Name'].decode('ASCII'), s])
         print()
     return vsl
  
@@ -258,8 +211,8 @@ def plot_frame(h, vsl=None):
     show()
 
 
-def get_VS_sequence(vs):
-    pass
+from aavsovsx import get_VS_sequence
+
 
 BRT.DEBUG=1
 #jid=293657
@@ -284,6 +237,11 @@ else :
         if obs['filter'] not in set(('BVR','B','V','R','Blue', 'Green', 'Red', 'Colour')):
             continue
         vlst=analyse_job(obs)
+        fov=60
+        if obs['tele'] == 'coast' :
+            fov=20
+        elif obs['tele'] == 'pirate' :
+            fov=43
         empty=True
         for f, vsl in vlst:
             for vs in vsl:
@@ -293,8 +251,16 @@ else :
                 if not vsre.match(vsname[0]) :
                     continue
                 empty = False
-                print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
-                sq = get_VS_sequence(vs[0])
+                print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1], end='')
+                try:
+                    sq, sq_stars = seqcache[vs[0]]
+                except KeyError:
+                    sq, sq_stars = get_VS_sequence(vs[0], fov)
+                    seqcache[vs[0]]=(sq, sq_stars)
+                if sq :
+                    print('    Seq: %s (%d stars)' % (sq, len(sq_stars)))
+                else :
+                    print('    No sequence found')
             #plot_frame(f,vsl)
             if not empty : print()
 
