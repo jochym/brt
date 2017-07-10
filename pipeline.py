@@ -125,13 +125,13 @@ def analyse_job(obs, cat='GCVS', local=True):
         jid=obs
         obs=brt.get_job(jid)
     
+    vsl=[]
     if obs['type']!='SSBODY' :
         print(jid, obs['filter'], obs['exp'], obs['type'], obs['oid'], end='')
         sys.stdout.flush()
         shdul=get_obs_shdul(brt, obs=obs)
         if shdul :
             print('  Scope:', shdul[0].header['TELESCOP'].strip(), end='')
-        vsl=[]
         print(' Filters: ', end='')
         for n,h in enumerate(shdul):
             print(h.header['FILTER'],end=',')
