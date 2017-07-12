@@ -227,8 +227,8 @@ import re
 
 vsre = re.compile('([V][0-9]+)|([R-Z])|([R-Z][R-Z])|([A-IK-Q][A-IK-Z])')
 
-if len(sys.argv)>1 :
-    for i in sys.argv[1:]:
+if len(sys.argv)>2 and sys.argv[1].startswith('-j'):
+    for i in sys.argv[2:]:
         jid = int(i)
         vlst=analyse_job(jid)
         plot_job(jid)
@@ -236,7 +236,11 @@ if len(sys.argv)>1 :
             for vs in vsl:
                 print('    %20s' % vs[0], '%(Period)12.6f %(min)6.2f - %(max)6.2f ' % vs[1])
 else :
-    for jid in brt.get_obs_list(dt=1):
+    t=None
+    if len(sys.argv)==2 :
+        dt=int(sys.argv[1])
+        t=time.time()-time.timezone-dt*86400
+    for jid in brt.get_obs_list(t=t, dt=1):
         obs=brt.get_job(jid)
         if obs['filter'] not in set(('BVR','B','V','R','Blue', 'Green', 'Red', 'Colour')):
             continue
