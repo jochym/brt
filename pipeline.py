@@ -242,6 +242,7 @@ else :
         t=time.time()-time.timezone-dt*86400
     for jid in brt.get_obs_list(t=t, dt=1):
         obs=brt.get_job(jid)
+        print( obs['completion'], end=' ' )
         if obs['filter'] not in set(('BVR','B','V','R','Blue', 'Green', 'Red', 'Colour')):
             continue
         vlst=analyse_job(obs)
