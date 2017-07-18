@@ -3,14 +3,11 @@
 from __future__ import print_function, division, absolute_import
 
 import time
-import os
 import configparser
 import BRT
 from requests import session
 from bs4 import BeautifulSoup
-from zipfile import ZipFile
 from io import StringIO, BytesIO
-from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
 from astropy import wcs
 import astropy.units as u
@@ -28,7 +25,7 @@ BRT.astrometryAPIkey=config['astrometry.net']['apikey']
 def submitVS(t):
     #t.submitVarStar('QZ Vir',comm='Cataclismic')
     #t.submitVarStar('RS Leo',comm='Unkn', expos=80)
-    
+
     t.submitVarStar('SS Cyg',comm='Mira', expos=180)
     t.submitVarStar('EU Cyg',comm='Mira', expos=180)
     t.submitVarStar('IP Cyg',comm='Mira', expos=240)
@@ -36,6 +33,7 @@ def submitVS(t):
     t.submitVarStar('AS Lac',comm='Mira', expos=120)
     t.submitVarStar('BI Her',comm='Mira', expos=240)
     t.submitVarStar('DX Vul',comm='Mira', expos=240)
+    t.submitVarStar('DQ Vul',comm='Mira', expos=180)
     t.submitVarStar('EQ Lyr',comm='Mira', expos=240)
     t.submitVarStar('AG Dra',comm='AAVSO', expos=30)
 

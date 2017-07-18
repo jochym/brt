@@ -88,7 +88,7 @@ for s in stars:
             v=prtMag(m)
             if v :
                 print('%s(aavso)=%s' % (d,v), end='')
-    print('''" 
+    print('''"
         flags ( ) )''')
 
 print( '''(name "%s" type target 

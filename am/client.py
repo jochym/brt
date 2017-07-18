@@ -45,14 +45,17 @@ class Client(object):
     def get_url(self, service):
         return self.apiurl + service
 
-    def send_request(self, service, args={}, file_args=None):
+    def send_request(self, service, args=None, file_args=None):
         '''
         service: string
         args: dict
         '''
-        
+
         import requests
-        
+
+        if args is None :
+            args={}
+
         if self.session is not None:
             args.update({ 'session' : self.session })
         print('Python:', args)

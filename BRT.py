@@ -13,8 +13,6 @@ from zipfile import ZipFile, BadZipFile
 import time
 from os import path
 
-import diskcache
-
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
 from astropy.time import Time
@@ -85,7 +83,7 @@ class Telescope :
             self.s=None
 
     def get_obs_list(self, t=None, dt=1, filtertype='', camera='', hour=16, minute=0):
-        '''Get the dt days of observations taken no later then time in t. 
+        '''Get the dt days of observations taken no later then time in t.
 
             Input
             ------
@@ -193,7 +191,7 @@ class Telescope :
 
         
     def download_obs(self,obs=None, directory='.', cube=False):
-        '''Download the raw observation obs (obtained from get_job) into zip 
+        '''Download the raw observation obs (obtained from get_job) into zip
         file named job_jid.zip located in the directory (current by default).
         Alternatively, when the cube=True the file will be a 3D fits file.
         The name of the file (without directory) is returned.'''
@@ -291,8 +289,6 @@ class Telescope :
         assert(obs!=None)
         assert(self.s != None)
         
-        fn=None
-        
         jid=obs['jid']
 
         tout=self.tout
@@ -333,8 +329,8 @@ class Telescope :
         ra=obj.ra.to_string(unit='hour', sep=' ',
                             pad=True, precision=2,
                             alwayssign=False).split()
-        dec=obj.dec.to_string(sep=' ', 
-                            pad=True, precision=2, 
+        dec=obj.dec.to_string(sep=' ',
+                            pad=True, precision=2,
                             alwayssign=True).split()
         try :
             tele=self.cameratypes[tele.lower()]
@@ -411,10 +407,10 @@ def getFrameRaDec(hdu):
         dec=hdu.header['OBJCTDEC']
     elif 'MNTRA' in hdu.header :
         ra=hdu.header['MNTRA']
-        dec=hdu.header['MNTDEC']        
+        dec=hdu.header['MNTDEC']
     elif 'RA-TEL' in hdu.header :
         ra=hdu.header['RA-TEL']
-        dec=hdu.header['DEC-TEL']                
+        dec=hdu.header['DEC-TEL']
     else :
         raise KeyError
     

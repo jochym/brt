@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys 
 import mechanicalsoup
 from lxml import etree
 from math import sqrt
@@ -34,7 +33,7 @@ def get_VS_sequence(vs, fov=60, maglimit=17):
     parser=etree.HTMLParser()
     #tree=etree.parse(open('rcp/sekw.html'),parser)
     tree=etree.fromstring(html,parser)
-    
+
     try :
         var=' '.join(tree.xpath('//p//strong//text()')[0].split()[1:])
         ra=tree.xpath('//p//strong//text()')[1].split()[0]
