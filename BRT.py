@@ -17,8 +17,6 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
 from astropy.time import Time
 
-global DEBUG
-
 DEBUG=1
 
 def debug_prn(*args,**kwargs):
