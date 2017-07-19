@@ -311,7 +311,7 @@ class Telescope :
             
         return None
 
-    def extractTicket(self,rq):
+    def extract_ticket(self,rq):
         soup = BeautifulSoup(rq.text, 'lxml')
         t=int(soup.find('input', attrs={
                         'name':'ticket',
@@ -320,7 +320,7 @@ class Telescope :
         return t
 
 
-    def submitRADECjob(self, obj, exposure=30000, tele='COAST', 
+    def submit_RADEC_job(self, obj, exposure=30000, tele='COAST', 
                         filt='BVR', darkframe=True, 
                         name='RaDec object', comment='AutoSubmit'):
         assert(self.s is not None)
@@ -349,13 +349,13 @@ class Telescope :
             
         u=self.url+'/request-constructor.php'
         r=self.s.get(u+'?action=new')
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('GoTo Part 1', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part1'})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('GoTo RADEC', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-go-radec'})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('Save RADEC', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-radec-save',
                              'raHours':ra[0],
@@ -367,19 +367,19 @@ class Telescope :
                              'decSecs':dec[2].split('.')[0],
                              'decFract':dec[2].split('.')[1],
                              'newObjectName':name})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('GoTo Part 2', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('Save Telescope', t)
         r=self.s.post(u,data={'ticket':t, 
                                 'action':'part2-save', 
                                 'submittype':'Save',
                                 'newTelescopeSelection':tele})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('GoTo Part 3')
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('Save Exposure')
         r=self.s.post(u,data={'ticket':t, 
                                 'action':'part3-save', 
@@ -388,14 +388,14 @@ class Telescope :
                                 'newDarkFrame': 1 if darkframe else 0,
                                 'newFilterSelection':filt,
                                 'newRequestComments':comment})
-        t=self.extractTicket(r)
+        t=self.extract_ticket(r)
         debug('Submit', t)
         r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
         return r
         
     def submitVarStar(self, name, expos=90, filt='BVR',comm='', tele='COAST'):
         o=SkyCoord.from_name(name)
-        return self.submitRADECjob(o, name=name, comment=comm, 
+        return self.submit_RADEC_job(o, name=name, comment=comm, 
                                 exposure=expos*1000, filt=filt, tele=tele)
 
 
