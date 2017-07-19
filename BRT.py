@@ -76,7 +76,7 @@ class Telescope :
         self.s.post(self.url+'login.php', data=payload)
 
     def logout(self):
-        if self.s==None :
+        if self.s is None :
             self.s.post(self.url+'logout.php')
             self.s=None
 
@@ -97,9 +97,9 @@ class Telescope :
 
         '''
 
-        assert(self.s != None)
+        assert(self.s is not None)
         
-        if t==None :
+        if t is None :
             t=time.time()-time.timezone
 
 
@@ -154,8 +154,8 @@ class Telescope :
     def get_job(self,jid=None):
         '''Get a job data for a given JID'''
         
-        assert(jid!=None)
-        assert(self.s != None)
+        assert(jid is not None)
+        assert(self.s is not None)
         
         obs={}
         debug(jid)
@@ -194,8 +194,8 @@ class Telescope :
         Alternatively, when the cube=True the file will be a 3D fits file.
         The name of the file (without directory) is returned.'''
         
-        assert(obs!=None)
-        assert(self.s != None)
+        assert(obs is not None)
+        assert(self.s is not None)
         
         jid=obs['jid']
         
@@ -216,8 +216,8 @@ class Telescope :
         file-like object. The function returns ZipFile structure of the 
         downloaded data.'''
         
-        assert(obs!=None)
-        assert(self.s != None)
+        assert(obs is not None)
+        assert(self.s is not None)
         
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         fp = path.join(self.cache,fn[0],fn[1],fn)
@@ -245,8 +245,8 @@ class Telescope :
         Alternatively, when the cube=True the file will be a 3D fits file.
         The name of the file (without directory) is returned.'''
         
-        assert(obs!=None)
-        assert(self.s != None)
+        assert(obs is not None)
+        assert(self.s is not None)
         
         fn=None
         
@@ -284,8 +284,8 @@ class Telescope :
         file-like object. The function returns ZipFile structure of the 
         downloaded data.'''
         
-        assert(obs!=None)
-        assert(self.s != None)
+        assert(obs is not None)
+        assert(self.s is not None)
         
         jid=obs['jid']
 
@@ -323,7 +323,7 @@ class Telescope :
     def submitRADECjob(self, obj, exposure=30000, tele='COAST', 
                         filt='BVR', darkframe=True, 
                         name='RaDec object', comment='AutoSubmit'):
-        assert(self.s != None)
+        assert(self.s is not None)
         ra=obj.ra.to_string(unit='hour', sep=' ',
                             pad=True, precision=2,
                             alwayssign=False).split()
