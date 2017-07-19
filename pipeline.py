@@ -147,7 +147,7 @@ def analyse_job(obs, cat='GCVS', local=True):
             #print("  Number of VS (unfiltered):", len(r))
             for s in r:
                 vsname='%-25s' % s['Name'].decode('ASCII')
-                if not any([n in vsname for n in blocked_names]):
+                if not any( n in vsname for n in blocked_names):
                     pix=array(s.pos.to_pixel(w))
                     # reject out of frame stars
                     if 0 < pix[0] < h.header['NAXIS1'] and 0 < pix[1] < h.header['NAXIS2'] :
@@ -185,7 +185,7 @@ def plot_job(jid, cat='GCVS', local=True):
             for s in r:
                 vsname='%-25s' % s['Name'].decode('ASCII')
                 # filter out NSV and VSX hits (leave just GCVS marked stars)
-                if not any([n in vsname for n in blocked_names]):
+                if not any( n in vsname for n in blocked_names):
                 #if vsname.find('NSV')<0 and vsname.find('VSX')<0 :
                     pix=array(s.pos.to_pixel(w))
                     # reject out of frame stars
