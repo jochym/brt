@@ -283,8 +283,6 @@ class Telescope :
         assert(obs is not None)
         assert(self.s is not None)
 
-        jid=obs['jid']
-
         tout=self.tout
 
         while tout > 0 :
@@ -307,7 +305,8 @@ class Telescope :
 
         return None
 
-    def extract_ticket(self,rq):
+    @staticmethod
+    def extract_ticket(rq):
         soup = BeautifulSoup(rq.text, 'lxml')
         t=int(soup.find('input', attrs={
                         'name':'ticket',
