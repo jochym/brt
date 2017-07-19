@@ -87,11 +87,13 @@ class Client(object):
 
 
 
-    def old_send_request(self, service, args={}, file_args=None):
+    def old_send_request(self, service, args=None, file_args=None):
         '''
         service: string
         args: dict
         '''
+        if args is None:
+            args = {}
         if self.session is not None:
             args.update({ 'session' : self.session })
         print('Python:', args)
