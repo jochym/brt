@@ -230,7 +230,7 @@ class Telescope :
         content = open(fp,'rb')
         try :
             return content if cube else ZipFile(content)
-        except zipfile.BadZipFile :
+        except BadZipFile :
             # Probably corrupted download. Try again once.
             content.close()
             os.remove(fp)
