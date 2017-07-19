@@ -46,7 +46,7 @@ def get_VS_sequence(vs, fov=60, maglimit=17):
     stars=[]
 
     #print('\nSequence %s for: %s ( ra: %s  dec: %s )' % (seq, var, ra, dec), file=sys.stderr)
-    
+
     for tab in tree.xpath('//table//tbody')[0:1]:
         #print >> sys.stderr, 'Sequence:', seq
         for row in tab.xpath('./tr')[1:-2]:

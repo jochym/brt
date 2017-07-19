@@ -8,7 +8,6 @@ import configparser
 import BRT
 from requests import session
 from bs4 import BeautifulSoup
-from zipfile import ZipFile
 from io import StringIO, BytesIO
 from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude

@@ -197,10 +197,8 @@ class Telescope :
         assert(obs is not None)
         assert(self.s is not None)
         
-        jid=obs['jid']
-        
         rq=self.s.get(self.url+
-                      ('v3image-download%s.php?jid=%d' % 
+                      ('v3image-download%s.php?jid=%d' %
                         ('' if cube else '-layers', obs['jid'])),
                       stream=True)
                       
@@ -212,8 +210,8 @@ class Telescope :
 
 
     def get_obs(self,obs=None, cube=False, recurse=True):
-        '''Get the raw observation obs (obtained from get_job) into zip 
-        file-like object. The function returns ZipFile structure of the 
+        '''Get the raw observation obs (obtained from get_job) into zip
+        file-like object. The function returns ZipFile structure of the
         downloaded data.'''
         
         assert(obs is not None)
@@ -256,7 +254,7 @@ class Telescope :
 
         while tout > 0 :
             rq=self.s.get(self.url+
-                          ('imageengine-request.php?jid=%d&type=%d' % 
+                          ('imageengine-request.php?jid=%d&type=%d' %
                             (obs['jid'], 1 if cube else 3 )))
 
             soup = BeautifulSoup(rq.text, 'lxml')
@@ -320,8 +318,8 @@ class Telescope :
         return t
 
 
-    def submit_RADEC_job(self, obj, exposure=30000, tele='COAST', 
-                        filt='BVR', darkframe=True, 
+    def submit_RADEC_job(self, obj, exposure=30000, tele='COAST',
+                        filt='BVR', darkframe=True,
                         name='RaDec object', comment='AutoSubmit'):
         assert(self.s is not None)
         ra=obj.ra.to_string(unit='hour', sep=' ',
@@ -395,7 +393,7 @@ class Telescope :
         
     def submitVarStar(self, name, expos=90, filt='BVR',comm='', tele='COAST'):
         o=SkyCoord.from_name(name)
-        return self.submit_RADEC_job(o, name=name, comment=comm, 
+        return self.submit_RADEC_job(o, name=name, comment=comm,
                                 exposure=expos*1000, filt=filt, tele=tele)
 
 
@@ -419,7 +417,7 @@ def getFrameRaDec(hdu):
     
     o=SkyCoord(Longitude(ra, unit='hour'),
                Latitude(dec, unit='deg'),
-               frame='icrs', obstime=hdu.header['DATE-OBS'], 
+               frame='icrs', obstime=hdu.header['DATE-OBS'],
                equinox=eq)
     return o
 
