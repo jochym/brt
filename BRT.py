@@ -22,13 +22,13 @@ DEBUG=1
 def debug_prn(*args,**kwargs):
     if kwargs['lvl'] <= DEBUG:
         print(*args)
-        
+
 def debug(*args):
     debug_prn('DEBUG:',*args,lvl=5)
 
 def info(*args):
     debug_prn(' INFO:',*args,lvl=2)
-    
+
 def warning(*args):
     debug_prn(' WARN:',*args,lvl=1)
 
@@ -44,7 +44,7 @@ def cleanup(s):
 # TODO: Better error handling.
 
 class Telescope :
-    
+
     url='http://www.telescope.org/'
     cameratypes={
         'constellation':'1',
@@ -54,7 +54,7 @@ class Telescope :
         'coast':'6',
         'pirate':'7',
     }
-    
+
     def __init__(self,user,passwd,cache='.cache/jobs'):
         self.s=None
         self.user=user
@@ -63,13 +63,13 @@ class Telescope :
         self.retry=15
         self.login()
         self.cache=cache
-        
+
     def login(self):
         payload = {'action': 'login',
                    'username': self.user,
                    'password': self.passwd,
                    'stayloggedin': 'true'}
-            
+
         debug('Get session ...')
         self.s=session()
         debug('Logging in ...')
@@ -85,7 +85,7 @@ class Telescope :
 
             Input
             ------
-            t  - end time in seconds from the epoch 
+            t  - end time in seconds from the epoch
                 (as returned by time.time())
             dt - number of days, default to 1
             filtertype - filter by type of filter used
@@ -98,7 +98,7 @@ class Telescope :
         '''
 
         assert(self.s is not None)
-        
+
         if t is None :
             t=time.time()-time.timezone
 
@@ -150,13 +150,13 @@ class Telescope :
                 jid=a[jid+4:].split('&')[0]
                 jlst.append(int(jid))
         return jlst
-    
+
     def get_job(self,jid=None):
         '''Get a job data for a given JID'''
-        
+
         assert(jid is not None)
         assert(self.s is not None)
-        
+
         obs={}
         debug(jid)
         obs['jid']=jid
@@ -184,24 +184,24 @@ class Telescope :
 
                 txt=f.text
         info('%(jid)d [%(tele)s, %(filter)s, %(status)s]: %(type)s %(oid)s %(exp)s' % obs)
-        
+
         return obs
 
-        
+
     def download_obs(self,obs=None, directory='.', cube=False):
         '''Download the raw observation obs (obtained from get_job) into zip
         file named job_jid.zip located in the directory (current by default).
         Alternatively, when the cube=True the file will be a 3D fits file.
         The name of the file (without directory) is returned.'''
-        
+
         assert(obs is not None)
         assert(self.s is not None)
-        
+
         rq=self.s.get(self.url+
                       ('v3image-download%s.php?jid=%d' %
                         ('' if cube else '-layers', obs['jid'])),
                       stream=True)
-                      
+
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         with open(path.join(directory, fn), 'wb') as fd:
             for chunk in rq.iter_content(512):
@@ -213,10 +213,10 @@ class Telescope :
         '''Get the raw observation obs (obtained from get_job) into zip
         file-like object. The function returns ZipFile structure of the
         downloaded data.'''
-        
+
         assert(obs is not None)
         assert(self.s is not None)
-        
+
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         fp = path.join(self.cache,fn[0],fn[1],fn)
         if not path.isfile(fp) :
@@ -238,16 +238,16 @@ class Telescope :
                 return None
 
     def download_obs_processed(self,obs=None, directory='.', cube=False):
-        '''Download the raw observation obs (obtained from get_job) into zip 
+        '''Download the raw observation obs (obtained from get_job) into zip
         file named job_jid.zip located in the directory (current by default).
         Alternatively, when the cube=True the file will be a 3D fits file.
         The name of the file (without directory) is returned.'''
-        
+
         assert(obs is not None)
         assert(self.s is not None)
-        
+
         fn=None
-        
+
         jid=obs['jid']
 
         tout=self.tout
@@ -259,11 +259,11 @@ class Telescope :
 
             soup = BeautifulSoup(rq.text, 'lxml')
             dlif=soup.find('iframe')
-            
+
             try :
                 dl=dlif.get('src')
                 rq=self.s.get(self.url+dl,stream=True)
-                
+
                 fn = ('brt_%(jid)d.' % obs) + ('fits' if cube else 'zip')
                 with open(path.join(directory, fn), 'wb') as fd:
                     for chunk in rq.iter_content(512):
@@ -273,40 +273,40 @@ class Telescope :
                 tout-=self.retry
                 warning('No data. Sleep for %ds ...'%self.retry)
                 time.sleep(self.retry)
-            
+
         return None
 
 
     def get_obs_processed(self,obs=None, cube=False):
-        '''Get the raw observation obs (obtained from get_job) into zip 
-        file-like object. The function returns ZipFile structure of the 
+        '''Get the raw observation obs (obtained from get_job) into zip
+        file-like object. The function returns ZipFile structure of the
         downloaded data.'''
-        
+
         assert(obs is not None)
         assert(self.s is not None)
-        
+
         jid=obs['jid']
 
         tout=self.tout
 
         while tout > 0 :
             rq=self.s.get(self.url+
-                          ('imageengine-request.php?jid=%d&type=%d' % 
+                          ('imageengine-request.php?jid=%d&type=%d' %
                             (obs['jid'], 1 if cube else 3 )))
 
             soup = BeautifulSoup(rq.text,'lxml')
             dlif=soup.find('iframe')
-            
+
             try :
                 dl=dlif.get('src')
                 rq=self.s.get(self.url+dl,stream=True)
                 return StringIO(rq.content) if cube else ZipFile(StringIO(rq.content))
-                
+
             except AttributeError :
                 tout-=self.retry
                 warning('No data. Sleep for %ds ...'%self.retry)
                 time.sleep(self.retry)
-            
+
         return None
 
     def extract_ticket(self,rq):
@@ -333,7 +333,7 @@ class Telescope :
         except KeyError :
             debug('Wrong telescope:', tele, 'selecting COAST(6)')
             tele=6
-            
+
         if tele==7 :
             if filt=='BVR' : filt='Colour'
             if filt=='B' : filt='Blue'
@@ -344,7 +344,7 @@ class Telescope :
             if filt=='Blue' : filt='B'
             if filt=='Green' : filt='V'
             if filt=='Red' : filt='R'
-            
+
         u=self.url+'/request-constructor.php'
         r=self.s.get(u+'?action=new')
         t=self.extract_ticket(r)
@@ -370,8 +370,8 @@ class Telescope :
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
         t=self.extract_ticket(r)
         debug('Save Telescope', t)
-        r=self.s.post(u,data={'ticket':t, 
-                                'action':'part2-save', 
+        r=self.s.post(u,data={'ticket':t,
+                                'action':'part2-save',
                                 'submittype':'Save',
                                 'newTelescopeSelection':tele})
         t=self.extract_ticket(r)
@@ -379,8 +379,8 @@ class Telescope :
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
         t=self.extract_ticket(r)
         debug('Save Exposure')
-        r=self.s.post(u,data={'ticket':t, 
-                                'action':'part3-save', 
+        r=self.s.post(u,data={'ticket':t,
+                                'action':'part3-save',
                                 'submittype':'Save',
                                 'newExposureTime':exposure,
                                 'newDarkFrame': 1 if darkframe else 0,
@@ -390,7 +390,7 @@ class Telescope :
         debug('Submit', t)
         r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
         return r
-        
+
     def submitVarStar(self, name, expos=90, filt='BVR',comm='', tele='COAST'):
         o=SkyCoord.from_name(name)
         return self.submit_RADEC_job(o, name=name, comment=comm,
@@ -409,12 +409,12 @@ def getFrameRaDec(hdu):
         dec=hdu.header['DEC-TEL']
     else :
         raise KeyError
-    
+
     try :
         eq=Time(hdu.header['EQUINOX'], format='decimalyear')
     except KeyError :
         eq=Time(2000, format='decimalyear')
-    
+
     o=SkyCoord(Longitude(ra, unit='hour'),
                Latitude(dec, unit='deg'),
                frame='icrs', obstime=hdu.header['DATE-OBS'],
@@ -439,7 +439,7 @@ def _solveField_local(hdu, cleanup=True):
         tel=tel.split()[1]
     else :
         tel=tel.split()[0]
-        
+
     loapp, hiapp=telescopes[tel]
     td=tempfile.mkdtemp(prefix='field-solver')
     try :
@@ -518,7 +518,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
         debug('Retrieving file from', url)
         r = requests.get(url)
         shdu=fits.open(BytesIO(r.content))
-    
+
     return shdu
 
 def solveField(hdu, name='brtjob', local=None, apikey=None, apiurl='http://nova.astrometry.net/api/', cleanup=True):

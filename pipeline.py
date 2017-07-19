@@ -87,25 +87,25 @@ def get_obs_shdul(brt, jid=None, obs=None):
 def searchVS(h, cat='GCVS', caturl=None, maxSearchRadius=5):
     '''
     Search the area of the image in h (hdu, fits) for variable stars
-    using the given catalogue. The cat imput parameter denotes the 
+    using the given catalogue. The cat imput parameter denotes the
     catalogue:
-    
+
     'GCVS' - use the General Catalogue of Variable Stars
     'VSX'  - use the AAVSO Variable Star Index
     'USER' - use the custom url passed in caturl parameter
-    
+
     The maximum search radius is specified by maxSearchRadius (deg).
-    
+
     Returns a list of VS in the circle with the frame inscribed in it.
     '''
-    
+
     if cat=='GCVS' :
         caturl='http://vizier.u-strasbg.fr/viz-bin/votable/-A?-source=B/vsx&amp;'
     elif cat=='VSX' :
         caturl='http://heasarc.gsfc.nasa.gov/cgi-bin/vo/cone/coneGet.pl?table=aavsovsx&amp;'
     else :
         caturl=caturl
-    
+
     w=wcs.WCS(h.header, fix=False)
     cen=w.all_pix2world(array([[h.header['NAXIS1'], h.header['NAXIS2']]])/2,0)[0]
     # Half of the hypotenuse of the frame = radius of the search
@@ -123,7 +123,7 @@ def analyse_job(obs, cat='GCVS', local=True):
     except TypeError :
         jid=obs
         obs=brt.get_job(jid)
-    
+
     vsl=[]
     if obs['type']!='SSBODY' :
         print(jid, obs['filter'], obs['exp'], obs['type'], obs['oid'], end='')
@@ -154,15 +154,15 @@ def analyse_job(obs, cat='GCVS', local=True):
                         vsl[n][1].append([s['Name'].decode('ASCII'), s])
         print()
     return vsl
- 
- 
+
+
 
 def plot_job(jid, cat='GCVS', local=True):
     blocked_names=['OGLE', 'MACHO', 'NSV', 'VSX', 'CSS', 'SWASP', 'CAG', 'ASAS', 'SDSS', 'HAT']
     obs=brt.get_job(jid)
     if obs['type']!='SSBODY' :
         print(jid, obs['filter'], obs['exp'], obs['type'], obs['oid'])
-        
+
         shdul=get_obs_shdul(brt, jid=jid, obs=obs)
         for n,h in enumerate(shdul):
             if h is None :
@@ -196,7 +196,7 @@ def plot_job(jid, cat='GCVS', local=True):
             ylim(0,h.header['NAXIS2'])
             show()
         print()
-    
+
 
 def plot_frame(h, vsl=None):
     print('  Scope: ', h.header['TELESCOP'], 'Filter: ',h.header['FILTER'])
@@ -272,6 +272,6 @@ else :
             #plot_frame(f,vsl)
             if not empty : print()
 
-        
+
 
 

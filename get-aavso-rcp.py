@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import sys 
+import sys
 import mechanicalsoup
 from lxml import etree
 
@@ -42,7 +42,7 @@ try :
     dec=tree.xpath('//p[2]//text()')[3].split()[0]
 except IndexError :
     sys.exit(0)
-    
+
 dsgn=['u', 'b', 'v', 'rc', 'ic']
 
 stars=[]
@@ -57,7 +57,7 @@ for tab in tree.xpath('//table')[0:1]:
         lbl=row.xpath('./td//text()')[6]
         ra=row.xpath('./td/*/text()')[1].split()[0]
         dec=row.xpath('./td/*/text()')[2].split()[0]
-        #print lbl, c[0], ra, dec, 
+        #print lbl, c[0], ra, dec,
 #        for d,m in zip(dsgn, (c[4], c[5], c[6], c[8], c[9])):
 #            s=prtMag(m)
 #            if s :
@@ -73,16 +73,16 @@ dec=tree.xpath('//p[2]//text()')[3].split()[0]
 print(var, ra, dec, seq, fov, file=sys.stderr)
 
 
-print( '''( recipy ( object "%s" ra "%s" dec "%s" 
-    equinox 2000 comments "From AAVSO VSP" ) 
-  sequence "%s" 
+print( '''( recipy ( object "%s" ra "%s" dec "%s"
+    equinox 2000 comments "From AAVSO VSP" )
+  sequence "%s"
   stars (
 ''' % (var, ra, dec, seq))
 
 for s in stars:
-    print( '''(name "%s" type std mag %f 
-           ra "%s" dec "%s" 
-           comments "AAVSO seq std, %s, %s" 
+    print( '''(name "%s" type std mag %f
+           ra "%s" dec "%s"
+           comments "AAVSO seq std, %s, %s"
            smags "''' % (s[1],float(s[0])/10, s[2], s[3], s[0], s[-1].encode('ascii', 'ignore')), end='' )
     for d,m in zip(dsgn,s[4:-1]):
             v=prtMag(m)
@@ -91,9 +91,9 @@ for s in stars:
     print('''"
         flags ( ) )''')
 
-print( '''(name "%s" type target 
-    ra "%s" dec "%s" 
-    flags ( var ) ) ) 
+print( '''(name "%s" type target
+    ra "%s" dec "%s"
+    flags ( var ) ) )
   )''' % (var, ra, dec) )
 
 
