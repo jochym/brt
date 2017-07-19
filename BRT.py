@@ -248,8 +248,6 @@ class Telescope :
 
         fn=None
 
-        jid=obs['jid']
-
         tout=self.tout
 
         while tout > 0 :

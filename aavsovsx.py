@@ -5,7 +5,11 @@ from lxml import etree
 from math import sqrt
 mech = mechanicalsoup.StatefulBrowser(soup_config={'features': 'lxml'})
 
-#print >> sys.stderr, "Get sequence for >>%s<<" % (" ".join(sys.argv[1:]),)
+
+DEBUG=False
+
+if DEBUG :
+    print("Get sequence for >>%s<<" % (" ".join(sys.argv[1:]),), file=sys.stderr)
 
 
 def prtMag(m):
@@ -45,7 +49,8 @@ def get_VS_sequence(vs, fov=60, maglimit=17):
 
     stars=[]
 
-    #print('\nSequence %s for: %s ( ra: %s  dec: %s )' % (seq, var, ra, dec), file=sys.stderr)
+    if DEBUG :
+        print('\nSequence %s for: %s ( ra: %s  dec: %s )' % (seq, var, ra, dec), file=sys.stderr)
 
     for tab in tree.xpath('//table//tbody')[0:1]:
         #print >> sys.stderr, 'Sequence:', seq

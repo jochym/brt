@@ -164,7 +164,7 @@ def plot_job(jid, cat='GCVS', local=True):
         print(jid, obs['filter'], obs['exp'], obs['type'], obs['oid'])
 
         shdul=get_obs_shdul(brt, jid=jid, obs=obs)
-        for n,h in enumerate(shdul):
+        for h in shdul:
             if h is None :
                 print('Unable to solve the field!')
                 continue
