@@ -13,7 +13,6 @@ from astropy import wcs
 import astropy.units as u
 from pyvo import conesearch
 import sys
-from pylab import *
 
 config = configparser.ConfigParser()
 config.read('telescope.ini')
