@@ -2,16 +2,8 @@
 
 from __future__ import print_function, division, absolute_import
 
-import time
 import configparser
 import BRT
-from requests import session
-from bs4 import BeautifulSoup
-from io import StringIO, BytesIO
-from astropy.coordinates import SkyCoord, Longitude, Latitude
-from astropy import wcs
-import astropy.units as u
-from pyvo import conesearch
 import sys
 
 config = configparser.ConfigParser()
