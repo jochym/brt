@@ -8,6 +8,7 @@ import os, tempfile, shutil
 from requests import session
 import requests
 from bs4 import BeautifulSoup
+import json
 from io import StringIO, BytesIO
 from zipfile import ZipFile, BadZipFile
 import time
@@ -55,6 +56,26 @@ class Telescope :
         'pirate':'7',
     }
 
+    REQUESTSTATUS_TEXTS={
+        1: "New",
+        2: "New, allocated",
+        3: "Waiting",
+        4: "In progress",
+        5: "Reallocate",
+        6: "Waiting again",
+        7: "Complete on site",
+        8: "Complete",
+        9: "Hold",
+        10: "Frozen",
+        20: "Expired",
+        21: "Expired w/CJobs",
+        22: "Cancelled",
+        23: "Cancelled w/CJobs",
+        24: "Invalid",
+        25: "Never rises",
+        26: "Other error",
+    }
+
     def __init__(self,user,passwd,cache='.cache/jobs'):
         self.s=None
         self.user=user
@@ -79,6 +100,50 @@ class Telescope :
         if self.s is None :
             self.s.post(self.url+'logout.php')
             self.s=None
+
+    def get_user_requests(self, sort='rid', folder=1):
+        '''
+        Get all user requests from folder (Inbox=1 by default),
+        sorted by sort column ('rid' by default). 
+        Possible sort columns are: 'rid', 'object', 'completion'
+        The data is returned as a list of dictionaries.
+        '''
+
+        #fetch first batch        
+        params={
+            'limit': 100,
+            'sort': sort,
+            'folderid': folder}
+
+        rq = self.s.post(self.url+"api-user.php", {'module': "request-manager", 
+                                                   'request': "1-get-list-own",
+                                                   'params' : json.dumps(params)})
+        res=[]
+        dat=json.loads(rq.content)
+        total=int(dat['data']['totalRequests'])
+        res+=dat['data']['requests']
+
+        # Fetch the rest
+        params['limit']=total-len(res)
+        params['startAfterRow']=len(res)
+        rq = self.s.post(self.url+"api-user.php", {'module': "request-manager", 
+                                                   'request': "1-get-list-own",
+                                                   'params' : json.dumps(params)})
+
+        dat=json.loads(rq.content)
+        total=int(dat['data']['totalRequests'])
+        res+=dat['data']['requests']
+        return res
+
+
+    def get_user_folders(self):
+        '''
+        Get all user folders. Returns list of dictionaries.
+        '''
+        rq = self.s.post(self.url+"api-user.php", {'module': "request-manager", 
+                                                   'request': "0-get-my-folders"})
+        return json.loads(rq.content)['data']
+
 
     def get_obs_list(self, t=None, dt=1, filtertype='', camera='', hour=16, minute=0):
         '''Get the dt days of observations taken no later then time in t.
