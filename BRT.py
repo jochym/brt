@@ -126,7 +126,7 @@ class Telescope :
             'searchearliestcom[]':[d, m, y, str(hour),str(minute)],
             'searchlatestcom[]':  [de,me,ye,str(hour),str(minute)],
             'searchstatus[]':['1'],
-            'resultsperpage':'200',
+            'resultsperpage':'1000',
             'searchfilter':filtertype,
             'searchtelescope':telescope,
             'submit':'Go'
