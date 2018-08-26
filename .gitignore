@@ -62,3 +62,5 @@ telescope.ini
 # Testing notebooks
 .ipynb_checkpoints
 
+# IDE
+.vscode
