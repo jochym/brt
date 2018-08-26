@@ -1,42 +1,48 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+# coding: utf-8
 
-from __future__ import print_function, division, absolute_import
-
+from brt import BRT
+import json
+from collections import namedtuple, defaultdict
 import configparser
-import BRT
 import sys
 
+VStar=namedtuple('VStar', 'name comm expos')
+
 config = configparser.ConfigParser()
-config.read('telescope.ini')
+config.read('brt/telescope.ini')
+
+print('Log in to telescope.org ...')
 
 brt=BRT.Telescope(config['telescope.org']['user'],config['telescope.org']['password'])
 BRT.astrometryAPIkey=config['astrometry.net']['apikey']
 
+obslst=[
+    VStar('SS Cyg', comm='Mira', expos=180),
+    VStar('EU Cyg',comm='Mira', expos=180),
+    VStar('IP Cyg',comm='Mira', expos=180),
+    VStar('V686 Cyg',comm='Mira',expos=180),
+    VStar('AS Lac',comm='Mira', expos=120),
+    VStar('BI Her',comm='Mira', expos=180),
+    VStar('DX Vul',comm='Mira', expos=180),
+    VStar('DQ Vul',comm='Mira', expos=180),
+    VStar('EQ Lyr',comm='Mira', expos=180),
+    VStar('LX Cyg', comm='AAVSO', expos=180)]
 
-def submitVS(t):
-    #t.submitVarStar('QZ Vir',comm='Cataclismic')
-    #t.submitVarStar('RS Leo',comm='Unkn', expos=80)
+print('Getting observing queue ...')
 
-    t.submitVarStar('SS Cyg',comm='Mira', expos=180)
-    t.submitVarStar('EU Cyg',comm='Mira', expos=180)
-    t.submitVarStar('IP Cyg',comm='Mira', expos=240)
-    t.submitVarStar('V686 Cyg',comm='Mira',expos=240)
-    t.submitVarStar('AS Lac',comm='Mira', expos=120)
-    t.submitVarStar('BI Her',comm='Mira', expos=240)
-    t.submitVarStar('DX Vul',comm='Mira', expos=240)
-    t.submitVarStar('DQ Vul',comm='Mira', expos=180)
-    t.submitVarStar('EQ Lyr',comm='Mira', expos=240)
-    t.submitVarStar('AG Dra',comm='AAVSO', expos=30)
+reqlst=brt.get_user_requests(sort='completion')
+q=[r for r in reqlst if int(r['status'])<8]
+qn=[r['objectname'] for r in q]
 
+print('Submitting missing jobs ...')
 
-if len(sys.argv)>1 :
-    ex=90
-    comment=""
-    if len(sys.argv)>2 :
-        ex=int(sys.argv[2])
-    if len(sys.argv)>3 :
-        comment=sys.argv[3]
-    brt.submitVarStar(sys.argv[1],expos=ex,comm=comment)
-else :
-    submitVS(brt)
+if not (len(sys.argv)>1 and sys.argv[1]=='-y' ):
+    print('Dry run. Add -y to the command line to do actual submissions.')
+    
+for vs in [vs for vs in obslst if vs.name not in qn]:
+    print(vs)
+    if len(sys.argv)>1 and sys.argv[1]=='-y' :
+        brt.submitVarStar(vs.name, expos=vs.expos, comm=vs.comm)
 
+print('Done.')

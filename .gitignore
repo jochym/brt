@@ -59,3 +59,6 @@ target/
 # Local config
 telescope.ini
 
+# Testing notebooks
+.ipynb_checkpoints
+
