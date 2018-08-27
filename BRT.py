@@ -162,7 +162,7 @@ class Telescope :
         ye=et.tm_year
 
         log = logging.getLogger(__name__)
-        log.debug('%d/%d/%d -> %d/%d/%d', (d,m,y,de,me,ye))
+        log.debug('%d/%d/%d -> %d/%d/%d', d,m,y,de,me,ye)
 
         try :
             telescope=self.cameratypes[camera.lower()]
@@ -368,7 +368,7 @@ class Telescope :
                         'name':'ticket',
                         'type':'hidden'})['value'])
         log = logging.getLogger(__name__)
-        log.debug('Ticket:', t)
+        log.debug('Ticket: %s', t)
         return t
 
 
@@ -388,7 +388,7 @@ class Telescope :
         try :
             tele=self.cameratypes[tele.lower()]
         except KeyError :
-            log.debug('Wrong telescope:', tele, 'selecting COAST(6)')
+            log.warning('Wrong telescope: %d ; selecting COAST(6)', tele)
             tele=6
 
         if tele==7 :
@@ -405,13 +405,13 @@ class Telescope :
         u=self.url+'/request-constructor.php'
         r=self.s.get(u+'?action=new')
         t=self.extract_ticket(r)
-        log.debug('GoTo Part 1', t)
+        log.debug('GoTo Part 1 (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part1'})
         t=self.extract_ticket(r)
-        log.debug('GoTo RADEC', t)
+        log.debug('GoTo RADEC (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-go-radec'})
         t=self.extract_ticket(r)
-        log.debug('Save RADEC', t)
+        log.debug('Save RADEC (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-radec-save',
                              'raHours':ra[0],
                              'raMins':ra[1],
@@ -423,19 +423,19 @@ class Telescope :
                              'decFract':dec[2].split('.')[1],
                              'newObjectName':name})
         t=self.extract_ticket(r)
-        log.debug('GoTo Part 2', t)
+        log.debug('GoTo Part 2 (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
         t=self.extract_ticket(r)
-        log.debug('Save Telescope', t)
+        log.debug('Save Telescope (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,
                                 'action':'part2-save',
                                 'submittype':'Save',
                                 'newTelescopeSelection':tele})
         t=self.extract_ticket(r)
-        log.debug('GoTo Part 3')
+        log.debug('GoTo Part 3 (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
         t=self.extract_ticket(r)
-        log.debug('Save Exposure')
+        log.debug('Save Exposure (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t,
                                 'action':'part3-save',
                                 'submittype':'Save',
@@ -444,7 +444,7 @@ class Telescope :
                                 'newFilterSelection':filt,
                                 'newRequestComments':comment})
         t=self.extract_ticket(r)
-        log.debug('Submit', t)
+        log.debug('Submit (ticket %s)', t)
         r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
         return r
 
@@ -539,14 +539,14 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
 
     while True:
         stat = cli.sub_status(res['subid'], justdict=True)
-        log.debug('Got status:', stat)
+        log.debug('Got status: %s', stat)
         jobs = stat.get('jobs', [])
         if len(jobs):
             for j in jobs:
                 if j is not None:
                     break
             if j is not None:
-                log.debug('Selecting job id', j)
+                log.debug('Selecting job id %d', j)
                 job_id = j
                 break
         time.sleep(5)
@@ -554,7 +554,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
     success = False
     while True:
         stat = cli.job_status(job_id, justdict=True)
-        log.debug('Got job status:', stat)
+        log.debug('Got job status: %s', stat)
         if stat.get('status','') in ['success']:
             success = (stat['status'] == 'success')
             break
@@ -576,7 +576,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
         # We don't need the API for file retrival, just construct URL
         url = apiurl.replace('/api/', '/new_fits_file/%i' % job_id)
 
-        log.debug('Retrieving file from', url)
+        log.debug('Retrieving file from %s', url)
         r = requests.get(url)
         shdu=fits.open(BytesIO(r.content))
 
