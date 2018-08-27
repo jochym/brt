@@ -4,7 +4,6 @@
 import BRT
 from collections import namedtuple
 import configparser
-import sys
 import os
 import logging
 from os.path import expanduser
