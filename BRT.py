@@ -18,24 +18,7 @@ from astropy.io import fits
 from astropy.coordinates import SkyCoord, Longitude, Latitude
 from astropy.time import Time
 
-DEBUG=1
-
-def debug_prn(*args,**kwargs):
-    if kwargs['lvl'] <= DEBUG:
-        print(*args)
-
-def debug(*args):
-    debug_prn('DEBUG:',*args,lvl=5)
-
-def info(*args):
-    debug_prn(' INFO:',*args,lvl=2)
-
-def warning(*args):
-    debug_prn(' WARN:',*args,lvl=1)
-
-def error(*args):
-    debug_prn('ERROR:',*args,lvl=0)
-
+import logging
 
 def cleanup(s):
     return s.encode('ascii','ignore').decode('ascii','ignore')
@@ -86,14 +69,14 @@ class Telescope :
         self.cache=cache
 
     def login(self):
+        log = logging.getLogger(__name__)
         payload = {'action': 'login',
                    'username': self.user,
                    'password': self.passwd,
                    'stayloggedin': 'true'}
-
-        debug('Get session ...')
+        log.debug('Get session ...')
         self.s=session()
-        debug('Logging in ...')
+        log.debug('Logging in ...')
         self.s.post(self.url+'login.php', data=payload)
 
     def logout(self):
@@ -178,7 +161,8 @@ class Telescope :
         me=et.tm_mon
         ye=et.tm_year
 
-        debug('%d/%d/%d -> %d/%d/%d' % (d,m,y,de,me,ye))
+        log = logging.getLogger(__name__)
+        log.debug('%d/%d/%d -> %d/%d/%d', (d,m,y,de,me,ye))
 
         try :
             telescope=self.cameratypes[camera.lower()]
@@ -222,13 +206,15 @@ class Telescope :
         assert(jid is not None)
         assert(self.s is not None)
 
+        log = logging.getLogger(__name__)
+        log.debug(jid)
+
         obs={}
-        debug(jid)
         obs['jid']=jid
         rq=self.s.post(self.url+('v3cjob-view.php?jid=%d' % jid))
         soup = BeautifulSoup(rq.text, 'lxml')
         for l in soup.findAll('tr'):
-            debug(cleanup(l.text))
+            log.debug(cleanup(l.text))
             txt=''
             for f in l.findAll('td'):
                 if txt.find('Object Type') >= 0:
@@ -248,7 +234,7 @@ class Telescope :
                     obs['status']= (f.text == 'Success')
 
                 txt=f.text
-        info('%(jid)d [%(tele)s, %(filter)s, %(status)s]: %(type)s %(oid)s %(exp)s' % obs)
+        log.info('%(jid)d [%(tele)s, %(filter)s, %(status)s]: %(type)s %(oid)s %(exp)s', obs)
 
         return obs
 
@@ -282,14 +268,16 @@ class Telescope :
         assert(obs is not None)
         assert(self.s is not None)
 
+        log = logging.getLogger(__name__)
+
         fn = ('%(jid)d.' % obs) + ('fits' if cube else 'zip')
         fp = path.join(self.cache,fn[0],fn[1],fn)
         if not path.isfile(fp) :
-            info('Getting %s from server' % fp)
+            log.info('Getting %s from server', fp)
             os.makedirs(path.dirname(fp), exist_ok=True)
             self.download_obs(obs,path.dirname(fp),cube)
         else :
-            info('Getting %s from cache' % fp)
+            log.info('Getting %s from cache', fp)
         content = open(fp,'rb')
         try :
             return content if cube else ZipFile(content)
@@ -310,6 +298,8 @@ class Telescope :
 
         assert(obs is not None)
         assert(self.s is not None)
+
+        log = logging.getLogger(__name__)
 
         fn=None
 
@@ -334,7 +324,7 @@ class Telescope :
                 return fn
             except AttributeError :
                 tout-=self.retry
-                warning('No data. Sleep for %ds ...'%self.retry)
+                log.warning('No data. Sleep for %ds ...'%self.retry)
                 time.sleep(self.retry)
 
         return None
@@ -347,6 +337,7 @@ class Telescope :
 
         assert(obs is not None)
         assert(self.s is not None)
+        log = logging.getLogger(__name__)
 
         tout=self.tout
 
@@ -365,7 +356,7 @@ class Telescope :
 
             except AttributeError :
                 tout-=self.retry
-                warning('No data. Sleep for %ds ...'%self.retry)
+                log.warning('No data. Sleep for %ds ...'%self.retry)
                 time.sleep(self.retry)
 
         return None
@@ -376,7 +367,8 @@ class Telescope :
         t=int(soup.find('input', attrs={
                         'name':'ticket',
                         'type':'hidden'})['value'])
-        debug('Ticket:', t)
+        log = logging.getLogger(__name__)
+        log.debug('Ticket:', t)
         return t
 
 
@@ -384,6 +376,9 @@ class Telescope :
                         filt='BVR', darkframe=True,
                         name='RaDec object', comment='AutoSubmit'):
         assert(self.s is not None)
+
+        log = logging.getLogger(__name__)
+
         ra=obj.ra.to_string(unit='hour', sep=' ',
                             pad=True, precision=2,
                             alwayssign=False).split()
@@ -393,7 +388,7 @@ class Telescope :
         try :
             tele=self.cameratypes[tele.lower()]
         except KeyError :
-            debug('Wrong telescope:', tele, 'selecting COAST(6)')
+            log.debug('Wrong telescope:', tele, 'selecting COAST(6)')
             tele=6
 
         if tele==7 :
@@ -410,13 +405,13 @@ class Telescope :
         u=self.url+'/request-constructor.php'
         r=self.s.get(u+'?action=new')
         t=self.extract_ticket(r)
-        debug('GoTo Part 1', t)
+        log.debug('GoTo Part 1', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part1'})
         t=self.extract_ticket(r)
-        debug('GoTo RADEC', t)
+        log.debug('GoTo RADEC', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-go-radec'})
         t=self.extract_ticket(r)
-        debug('Save RADEC', t)
+        log.debug('Save RADEC', t)
         r=self.s.post(u,data={'ticket':t,'action':'part1-radec-save',
                              'raHours':ra[0],
                              'raMins':ra[1],
@@ -428,19 +423,19 @@ class Telescope :
                              'decFract':dec[2].split('.')[1],
                              'newObjectName':name})
         t=self.extract_ticket(r)
-        debug('GoTo Part 2', t)
+        log.debug('GoTo Part 2', t)
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part2'})
         t=self.extract_ticket(r)
-        debug('Save Telescope', t)
+        log.debug('Save Telescope', t)
         r=self.s.post(u,data={'ticket':t,
                                 'action':'part2-save',
                                 'submittype':'Save',
                                 'newTelescopeSelection':tele})
         t=self.extract_ticket(r)
-        debug('GoTo Part 3')
+        log.debug('GoTo Part 3')
         r=self.s.post(u,data={'ticket':t,'action':'main-go-part3'})
         t=self.extract_ticket(r)
-        debug('Save Exposure')
+        log.debug('Save Exposure')
         r=self.s.post(u,data={'ticket':t,
                                 'action':'part3-save',
                                 'submittype':'Save',
@@ -449,7 +444,7 @@ class Telescope :
                                 'newFilterSelection':filt,
                                 'newRequestComments':comment})
         t=self.extract_ticket(r)
-        debug('Submit', t)
+        log.debug('Submit', t)
         r=self.s.post(u,data={'ticket':t, 'action':'main-submit'})
         return r
 
@@ -493,6 +488,8 @@ telescopes={
 }
 
 def _solveField_local(hdu, cleanup=True):
+    log = logging.getLogger(__name__)
+
     o=getFrameRaDec(hdu)
     ra=o.ra.deg
     dec=o.dec.deg
@@ -506,12 +503,12 @@ def _solveField_local(hdu, cleanup=True):
     td=tempfile.mkdtemp(prefix='field-solver')
     try :
         fn=tempfile.mkstemp(dir=td, suffix='.fits')
-        debug(td, fn)
+        log.debug(td, fn)
         hdu.writeto(fn[1])
-        debug((astrometry_cmd % (loapp, hiapp, ra, dec, fn[1])))
+        log.debug((astrometry_cmd % (loapp, hiapp, ra, dec, fn[1])))
         solver=os.popen(astrometry_cmd % (loapp, hiapp, ra, dec, fn[1]))
         for ln in solver:
-            debug(ln.strip())
+            log.debug(ln.strip())
         shdu=fits.open(BytesIO(open(fn[1][:-5]+'.new','rb').read()))
         return shdu
     except IOError :
@@ -525,6 +522,8 @@ from am import Client
 astrometryAPIkey=None
 
 def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astrometry.net/api/', cleanup=True):
+    log = logging.getLogger(__name__)
+
     if apikey is None :
         if astrometryAPIkey is None :
             print('You need an API key from astrometry.net to use network solver.')
@@ -540,14 +539,14 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
 
     while True:
         stat = cli.sub_status(res['subid'], justdict=True)
-        debug('Got status:', stat)
+        log.debug('Got status:', stat)
         jobs = stat.get('jobs', [])
         if len(jobs):
             for j in jobs:
                 if j is not None:
                     break
             if j is not None:
-                debug('Selecting job id', j)
+                log.debug('Selecting job id', j)
                 job_id = j
                 break
         time.sleep(5)
@@ -555,7 +554,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
     success = False
     while True:
         stat = cli.job_status(job_id, justdict=True)
-        debug('Got job status:', stat)
+        log.debug('Got job status:', stat)
         if stat.get('status','') in ['success']:
             success = (stat['status'] == 'success')
             break
@@ -577,7 +576,7 @@ def _solveField_remote(hdu, name='brtjob', apikey=None, apiurl='http://nova.astr
         # We don't need the API for file retrival, just construct URL
         url = apiurl.replace('/api/', '/new_fits_file/%i' % job_id)
 
-        debug('Retrieving file from', url)
+        log.debug('Retrieving file from', url)
         r = requests.get(url)
         shdu=fits.open(BytesIO(r.content))
 
