@@ -29,7 +29,7 @@ def cleanup(s):
 
 class Telescope :
 
-    url='http://www.telescope.org/'
+    url='https://www.telescope.org/'
     cameratypes={
         'constellation':'1',
         'galaxy':       '2',
