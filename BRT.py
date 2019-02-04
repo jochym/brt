@@ -372,6 +372,67 @@ class Telescope :
         return t
 
 
+    def do_api_call(self, module, req, params=None):
+        rq = self.s.post(self.url+"api-user.php", {'module': module, 
+                                                   'request': req,
+                                                   'params': {} if params is None else json.dumps(params)})
+        return json.loads(rq.content)
+
+    def do_rm_api(self, req, params=None):
+        return self.do_api_call("request-manager", req, params)
+
+
+    def do_rc_api(self, req, params=None):
+        return self.do_api_call("request-constructor", req, params)
+
+
+    def submit_job_api(self, obj, exposure=30000, tele='COAST',
+                        filt='BVR', darkframe=True,
+                        name='RaDec object', comment='AutoSubmit'):
+        assert(self.s is not None)
+
+        log = logging.getLogger(__name__)
+
+        ra=obj.ra.to_string(unit='hour', sep=':', pad=True, precision=2,
+                            alwayssign=False)
+        dec=obj.dec.to_string(sep=':', pad=True, precision=2,
+                            alwayssign=True)
+        try :
+            tele=self.cameratypes[tele.lower()]
+        except KeyError :
+            log.warning('Wrong telescope: %d ; selecting COAST(6)', tele)
+            tele=6
+
+        if tele==7 :
+            if filt=='BVR' : filt='Colour'
+            if filt=='B' : filt='Blue'
+            if filt=='V' : filt='Green'
+            if filt=='R' : filt='Red'
+        if tele==6 :
+            if filt=='Colour' : filt='BVR'
+            if filt=='Blue' : filt='B'
+            if filt=='Green' : filt='V'
+            if filt=='Red' : filt='R'
+
+        params = {'telescopeid': tele, 'telescopetype': 2,
+                  'exposuretime': exposure, 'filtertype': filt,
+                  'objecttype': 'RADEC', 'objectname': name, 
+                  'objectid': ra+' '+dec, 'usercomments': comment }
+
+        self.do_rc_api("0-rb-clear")
+
+        r = self.do_rc_api("0-rb-set", params)
+        log.debug('Req data:%s', r)
+        if r['success'] :
+            r = self.do_rc_api("0-rb-submit")
+            log.debug('Submission data:%s', r)
+        if r['success'] :
+            return True, r['data']['id']
+        else :
+            log.warning('Submission error. Status:%s', r['status'])
+            return False, r['status']
+
+
     def submit_RADEC_job(self, obj, exposure=30000, tele='COAST',
                         filt='BVR', darkframe=True,
                         name='RaDec object', comment='AutoSubmit'):
@@ -450,7 +511,7 @@ class Telescope :
 
     def submitVarStar(self, name, expos=90, filt='BVR',comm='', tele='COAST'):
         o=SkyCoord.from_name(name)
-        return self.submit_RADEC_job(o, name=name, comment=comm,
+        return self.submit_job_api(o, name=name, comment=comm,
                                 exposure=expos*1000, filt=filt, tele=tele)
 
 

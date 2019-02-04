@@ -34,13 +34,13 @@ log.info('Log in to telescope.org ...')
 brt=BRT.Telescope(config['telescope.org']['user'], config['telescope.org']['password'])
 BRT.astrometryAPIkey=config['astrometry.net']['apikey']
 
-def qprint(msg):
+def qprint(*ar, **kwar):
     if not args.quiet:
-        print(msg)
+        print(*ar, **kwar)
 
-def vprint(msg):
+def vprint(*ar, **kwar):
     if args.verbose and not args.quiet:
-        print(msg)
+        print(*ar, **kwar)
 
 
 obslst=[
@@ -48,12 +48,15 @@ obslst=[
     VStar('EU Cyg', comm='Mira', expos=180),
     VStar('IP Cyg', comm='Mira', expos=180),
     VStar('V686 Cyg', comm='Mira', expos=180),
-    VStar('AS Lac', comm='Mira', expos=120),
+    #VStar('AS Lac', comm='Mira', expos=120),
     VStar('BI Her', comm='Mira', expos=180),
     VStar('DX Vul', comm='Mira', expos=180),
     VStar('DQ Vul', comm='Mira', expos=180),
     VStar('EQ Lyr', comm='Mira', expos=180),
-    VStar('LX Cyg', comm='AAVSO', expos=180)]
+    VStar('LX Cyg', comm='AAVSO', expos=180),
+    VStar('S Ori', comm='Mira AAVSO', expos=120)
+    ]
+
 
 log.info('Getting observing queue ...')
 
@@ -69,9 +72,14 @@ if missing :
         qprint('Dry run. Add -s to the command line to do actual submissions.')
         
     for vs in missing:
-        qprint(f'{vs.name.split()[0]:>8} {vs.name.split()[1]} exp:{vs.expos:3.1f}s   {vs.comm}')
+        qprint(f'{vs.name.split()[0]:>8} {vs.name.split()[1]} exp:{vs.expos:3.1f}s   {vs.comm}', end='')
         if args.submit :
-            brt.submitVarStar(vs.name, expos=vs.expos, comm=vs.comm)
+            r, i = brt.submitVarStar(vs.name, expos=vs.expos, comm=vs.comm)
+            if r :
+                qprint(f' => id: {i}', end='')
+            else :
+                qprint(f' Failure:{i}', end='')
+        qprint()
 else :
     qprint('No missing jobs. Nothing to do!')
 
