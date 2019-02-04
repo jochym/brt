@@ -373,7 +373,7 @@ class Telescope :
 
 
     def do_api_call(self, module, req, params=None):
-        rq = self.s.post(self.url+"api-user.php", {'module': module, 
+        rq = self.s.post(self.url+"api-user.php", {'module': module,
                                                    'request': req,
                                                    'params': {} if params is None else json.dumps(params)})
         return json.loads(rq.content)
@@ -416,7 +416,7 @@ class Telescope :
 
         params = {'telescopeid': tele, 'telescopetype': 2,
                   'exposuretime': exposure, 'filtertype': filt,
-                  'objecttype': 'RADEC', 'objectname': name, 
+                  'objecttype': 'RADEC', 'objectname': name,
                   'objectid': ra+' '+dec, 'usercomments': comment }
 
         self.do_rc_api("0-rb-clear")
