@@ -44,6 +44,8 @@ def vprint(*ar, **kwar):
 
 
 obslst=[
+    VStar('S Ori', comm='Mira AAVSO', expos=120),
+    VStar('CH Cyg', comm='Symbiotic AAVSO', expos=60),
     VStar('SS Cyg', comm='Mira', expos=180),
     VStar('EU Cyg', comm='Mira', expos=180),
     VStar('IP Cyg', comm='Mira', expos=180),
@@ -54,7 +56,6 @@ obslst=[
     VStar('DQ Vul', comm='Mira', expos=180),
     VStar('EQ Lyr', comm='Mira', expos=180),
     VStar('LX Cyg', comm='AAVSO', expos=180),
-    VStar('S Ori', comm='Mira AAVSO', expos=120)
     ]
 
 
